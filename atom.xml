@@ -6,7 +6,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="https://liuruijie87.github.io/"/>
-  <updated>2019-07-14T13:55:28.952Z</updated>
+  <updated>2019-07-26T05:30:11.758Z</updated>
   <id>https://liuruijie87.github.io/</id>
   
   <author>
@@ -15,6 +15,31 @@
   </author>
   
   <generator uri="http://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>STL源码剖析（1）</title>
+    <link href="https://liuruijie87.github.io/2019/07/26/STL%E6%BA%90%E7%A0%81%E5%89%96%E6%9E%90%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0%EF%BC%881%EF%BC%89/"/>
+    <id>https://liuruijie87.github.io/2019/07/26/STL源码剖析读书笔记（1）/</id>
+    <published>2019-07-26T02:57:50.591Z</published>
+    <updated>2019-07-26T05:30:11.758Z</updated>
+    
+    <content type="html"><![CDATA[<h1 id="概览"><a href="#概览" class="headerlink" title="概览"></a>概览</h1><pre><code>STL即C++标准模板库，主要由六大部件组成，分别是：容器、迭代器、算法、仿函数、配置器、适配器。在讲述这些主要部件之前，先来了解一下面向对象编程和泛型编程，面向对象编程（Object-Oriented programming，简称OOP）企图将数据和处理数据的方法放到一起，例如，在C++的类中，一般会有成员变量和处理成员变量的成员函数，在需要使用的时候创建一个对象，然后以对象来调用它们。而泛型编程（Generic Programming,简称GP）是将数据和处理方法分离开来，这里的处理方法通常是全局函数，例如STL中的算法和容器，两者互不影响，需要的时候通过迭代器来传递信息。</code></pre><h1 id="容器"><a href="#容器" class="headerlink" title="容器"></a>容器</h1>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;h1 id=&quot;概览&quot;&gt;&lt;a href=&quot;#概览&quot; class=&quot;headerlink&quot; title=&quot;概览&quot;&gt;&lt;/a&gt;概览&lt;/h1&gt;&lt;pre&gt;&lt;code&gt;STL即C++标准模板库，主要由六大部件组成，分别是：容器、迭代器、算法、仿函数、配置器、适配器。在讲述这些主要部件之前，先
+      
+    
+    </summary>
+    
+      <category term="读书笔记" scheme="https://liuruijie87.github.io/categories/%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0/"/>
+    
+    
+      <category term="STL" scheme="https://liuruijie87.github.io/tags/STL/"/>
+    
+  </entry>
   
   <entry>
     <title>我的第一篇博客</title>
