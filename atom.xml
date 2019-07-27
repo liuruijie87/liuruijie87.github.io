@@ -6,7 +6,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="https://liuruijie87.github.io/"/>
-  <updated>2019-07-26T05:30:11.758Z</updated>
+  <updated>2019-07-27T07:56:47.044Z</updated>
   <id>https://liuruijie87.github.io/</id>
   
   <author>
@@ -21,15 +21,15 @@
     <link href="https://liuruijie87.github.io/2019/07/26/STL%E6%BA%90%E7%A0%81%E5%89%96%E6%9E%90%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0%EF%BC%881%EF%BC%89/"/>
     <id>https://liuruijie87.github.io/2019/07/26/STL源码剖析读书笔记（1）/</id>
     <published>2019-07-26T02:57:50.591Z</published>
-    <updated>2019-07-26T05:30:11.758Z</updated>
+    <updated>2019-07-27T07:56:47.044Z</updated>
     
-    <content type="html"><![CDATA[<h1 id="概览"><a href="#概览" class="headerlink" title="概览"></a>概览</h1><pre><code>STL即C++标准模板库，主要由六大部件组成，分别是：容器、迭代器、算法、仿函数、配置器、适配器。在讲述这些主要部件之前，先来了解一下面向对象编程和泛型编程，面向对象编程（Object-Oriented programming，简称OOP）企图将数据和处理数据的方法放到一起，例如，在C++的类中，一般会有成员变量和处理成员变量的成员函数，在需要使用的时候创建一个对象，然后以对象来调用它们。而泛型编程（Generic Programming,简称GP）是将数据和处理方法分离开来，这里的处理方法通常是全局函数，例如STL中的算法和容器，两者互不影响，需要的时候通过迭代器来传递信息。</code></pre><h1 id="容器"><a href="#容器" class="headerlink" title="容器"></a>容器</h1>]]></content>
+    <content type="html"><![CDATA[<h1 id="写在前面的话"><a href="#写在前面的话" class="headerlink" title="写在前面的话"></a>写在前面的话</h1><p> 　　近段时间看了侯捷老师的《STL源码剖析》，看第一遍的时候一头雾水，反复多看几遍，似乎明白了一些。因此将学到的知识做一个记录，也算是记录自己的学习过程。本系列博客主要记录一些宏观理解性的东西，具体的代码实现还是要仔细品味原书。</p><h1 id="概览"><a href="#概览" class="headerlink" title="概览"></a>概览</h1><p>　　STL即C++标准模板库，主要由六大部件组成，分别是：分配器、容器、迭代器、算法、仿函数、适配器。<br>在讲述这些主要部件之前，先来了解一下面向对象编程和泛型编程，面向对象编程（Object-Oriented programming，简称OOP）企图将数据和处理数据的方法放到一起，例如，在C++的类中，一般会有成员变量和处理成员变量的成员函数，在需要使用的时候创建一个对象，然后以对象来调用它们。而泛型编程（Generic Programming,简称GP）是将数据和处理方法分离开来，这里的处理方法通常是全局函数，例如STL中的算法和容器，两者互不影响，需要的时候通过迭代器来传递信息。<br>　　好了，接下来就从这六大部件出发，了解STL的内部关系。这篇博文主要记录分配器的重点。</p><h1 id="分配器（allocators）"><a href="#分配器（allocators）" class="headerlink" title="分配器（allocators）"></a>分配器（allocators）</h1><p>　　allocator主要是用来管理存储空间，它当中的 allocate() 调用 operator new() 来分配空间，其中 operator new() 中又调用了C语言中的 malloc() 函数，而 deallocate() 则调用了operator delete(),其中，operator delete() 又调用了 free() 来释放内存。以上谈的这种分配器是标准规范下的实现方法。而SGI STL有一种默认的分配器 alloc ，它的每一个容器都已经指定其缺省的空间分配器为 alloc，例如下面的 vector 声明：<br>    template &lt;class T, class Alloc = alloc&gt;<br>    class vector{…};<br>　　这其中就是缺省使用的 alloc 为分配器。由于调用 malloc() 只会寻找整片比较大的空间，对于一些小型区块，可能造成内存浪费的问题,因此，SGI设计了双级分配器，第一级分配器直接使用 malloc() 和 free()，第二级分配器则视情况采用不同的策略：当配置区块超过128字节时，视之为 “足够大”，便调用第一级分配器    ，当分配区块小于128字节时，视之为 “过小”，为了降低额外负担（合理利用资源），就使用第二级分配器。<br>　　而第二级分配器的具体实现是以内存池管理的形式，每次配置一块大内存，然后维护对应的自由链表（可增加，也可删减），下次如果再有相同大小的内存需求，就直接从自由链表中取出，如果使用方释放了小块内存，则由分配器回收到对应的链表中。为了方便管理，SGI的第二级分配器会主动将任何小额区块的内存需求上调至8的倍数（例如使用者需要30字节，就自动调整为32字节），并维护16个自由链表，各自管理的大小分别为：8，16，24，32，40，56，64，72，80，88，96，104，112，128字节的小额区块。<br>　　因此，整个的内存分配释放过程即可归纳为如下流程：分配器拥有标准接口函数 allocate()，此函数首先判断区块的大小，大于128字节就调用第一级分配器，小于128字节就检查对应的自由链表。如果自由链表内有可用的区块，就直接拿来用，如果没有可用的区块，就将区块大小上调至8的倍数，然后重新填充空间。 在释放的时候，同样由分配器的标准接口函数 deallocate() 首先判断区块大小，大于128字节就调用第一级分配器，小于128字节就找出对应的自由链表，将区块回收。</p>]]></content>
     
     <summary type="html">
     
       
       
-        &lt;h1 id=&quot;概览&quot;&gt;&lt;a href=&quot;#概览&quot; class=&quot;headerlink&quot; title=&quot;概览&quot;&gt;&lt;/a&gt;概览&lt;/h1&gt;&lt;pre&gt;&lt;code&gt;STL即C++标准模板库，主要由六大部件组成，分别是：容器、迭代器、算法、仿函数、配置器、适配器。在讲述这些主要部件之前，先
+        &lt;h1 id=&quot;写在前面的话&quot;&gt;&lt;a href=&quot;#写在前面的话&quot; class=&quot;headerlink&quot; title=&quot;写在前面的话&quot;&gt;&lt;/a&gt;写在前面的话&lt;/h1&gt;&lt;p&gt; 　　近段时间看了侯捷老师的《STL源码剖析》，看第一遍的时候一头雾水，反复多看几遍，似乎明白了一些。因此将
       
     
     </summary>
