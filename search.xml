@@ -1,70 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
-<search> 
-  
-  
-    
-    <entry>
-      <title>STL源码剖析（1）</title>
-      <link href="/2019/07/26/STL%E6%BA%90%E7%A0%81%E5%89%96%E6%9E%90%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0%EF%BC%881%EF%BC%89/"/>
-      <url>/2019/07/26/STL%E6%BA%90%E7%A0%81%E5%89%96%E6%9E%90%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0%EF%BC%881%EF%BC%89/</url>
-      
-        <content type="html"><![CDATA[<h1 id="写在前面的话"><a href="#写在前面的话" class="headerlink" title="写在前面的话"></a>写在前面的话</h1><p> 　　近段时间看了侯捷老师的《STL源码剖析》，看第一遍的时候一头雾水，反复多看几遍，似乎明白了一些。因此将学到的知识做一个记录，也算是记录自己的学习过程。本系列博客主要记录一些宏观理解性的东西，具体的代码实现还是要仔细品味原书。</p><h1 id="概览"><a href="#概览" class="headerlink" title="概览"></a>概览</h1><p>　　STL即C++标准模板库，主要由六大部件组成，分别是：分配器、容器、迭代器、算法、仿函数、适配器。<br>在讲述这些主要部件之前，先来了解一下面向对象编程和泛型编程，面向对象编程（Object-Oriented programming，简称OOP）企图将数据和处理数据的方法放到一起，例如，在C++的类中，一般会有成员变量和处理成员变量的成员函数，在需要使用的时候创建一个对象，然后以对象来调用它们。而泛型编程（Generic Programming,简称GP）是将数据和处理方法分离开来，这里的处理方法通常是全局函数，例如STL中的算法和容器，两者互不影响，需要的时候通过迭代器来传递信息。<br>　　好了，接下来就从这六大部件出发，了解STL的内部关系。这篇博文主要记录分配器的重点。</p><h1 id="分配器（allocators）"><a href="#分配器（allocators）" class="headerlink" title="分配器（allocators）"></a>分配器（allocators）</h1><p>　　allocator主要是用来管理存储空间，它当中的 allocate() 调用 operator new() 来分配空间，其中 operator new() 中又调用了C语言中的 malloc() 函数，而 deallocate() 则调用了operator delete(),其中，operator delete() 又调用了 free() 来释放内存。以上谈的这种分配器是标准规范下的实现方法。而SGI STL有一种默认的分配器 alloc ，它的每一个容器都已经指定其缺省的空间分配器为 alloc，例如下面的 vector 声明：<br>    template &lt;class T, class Alloc = alloc&gt;<br>    class vector{…};<br>　　这其中就是缺省使用的 alloc 为分配器。由于调用 malloc() 只会寻找整片比较大的空间，对于一些小型区块，可能造成内存浪费的问题,因此，SGI设计了双级分配器，第一级分配器直接使用 malloc() 和 free()，第二级分配器则视情况采用不同的策略：当配置区块超过128字节时，视之为 “足够大”，便调用第一级分配器    ，当分配区块小于128字节时，视之为 “过小”，为了降低额外负担（合理利用资源），就使用第二级分配器。<br>　　而第二级分配器的具体实现是以内存池管理的形式，每次配置一块大内存，然后维护对应的自由链表（可增加，也可删减），下次如果再有相同大小的内存需求，就直接从自由链表中取出，如果使用方释放了小块内存，则由分配器回收到对应的链表中。为了方便管理，SGI的第二级分配器会主动将任何小额区块的内存需求上调至8的倍数（例如使用者需要30字节，就自动调整为32字节），并维护16个自由链表，各自管理的大小分别为：8，16，24，32，40，56，64，72，80，88，96，104，112，128字节的小额区块。<br>　　因此，整个的内存分配释放过程即可归纳为如下流程：分配器拥有标准接口函数 allocate()，此函数首先判断区块的大小，大于128字节就调用第一级分配器，小于128字节就检查对应的自由链表。如果自由链表内有可用的区块，就直接拿来用，如果没有可用的区块，就将区块大小上调至8的倍数，然后重新填充空间。 在释放的时候，同样由分配器的标准接口函数 deallocate() 首先判断区块大小，大于128字节就调用第一级分配器，小于128字节就找出对应的自由链表，将区块回收。</p>]]></content>
-      
-      
+<search>
+  <entry>
+    <title><![CDATA[STL源码剖析（2）]]></title>
+    <url>%2F2019%2F07%2F28%2FSTL%E6%BA%90%E7%A0%81%E5%89%96%E6%9E%90%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0%EF%BC%882%EF%BC%89%2F</url>
+    <content type="text"><![CDATA[写在前面的话 上一篇博文写了STL的分配器，这一篇着重介绍一下迭代器。 迭代器介绍 我们都知道，STL中将容器和算法分离开来，彼此独立设计，以达到泛化的效果，而在使用的时候又需要将这两种东西撮合到一起，实现这个撮合功能的就是迭代器。也就是说迭代器是介于容器与算法之间的一种东西，它可以把实现某个算法所需要的容器里面的信息传递给算法，从而达到一种“桥梁”的效果。 迭代器可以看作是一种“智能指针”。它是一种行为类似指针的对象，而指针的各种行为中最常见的也是最重要的便是内容提取和成员访问，因此，迭代器最重要的编程工作就是对 operator✳ 和 operator-&gt;进行重载。关于这一点，其实跟真证的智能指针（share_ptr等）没有区别。既然迭代器实现的功能和指针一样，那为什么不直接用指针来代替迭代器呢？何必还要多此一举。这是因为，指针只能在连续空间上前进和后退，而不能随意的跳转，例如在双向链表的每一个节点中，都有两个指针，分别指向前一个元素和后一个元素，除此之外每个节点中还有另外的空间来存储数据，当指针+1的时候，它只能在该节点的连续空间上移动，而当设计好相应功能的迭代器+1的时候，可以直接跳到下一个节点，也就是说，迭代器可以实现跨区域跳转，这就是它与指针之间最大的不同。 迭代器的相应型别 我们发现，在算法中运用迭代器时，会用到迭代器的相应型别，什么是相应型别？迭代器所指之物的型别就是其中的一种。常用迭代器的相应型别有五种，分别是：value type; difference type; reference type; pointer type; iterator_category.接下来分别介绍这五种相应型别。 value type 所谓 value type，就是指迭代器所指对象的型别，任何一个打算与 STL 算法有完美搭配的类，都应该定义自己的 value type 内嵌型别。 difference type difference type 用来表示两个迭代器之间的距离，因此它也可以用来表示一个容器的最大容量，因为对于连续空间的容器而言，头尾之间的距离就是其最大容量，如果一个泛型算法提供计数功能，例如 STL 的 count(), 其传回值就必须使用迭代器的 difference type。 reference type 在 C++ 中，函数要传回左值，都是以传引用的方式进行，所以当 p 是个可修改值的迭代器时，如果其 value type 是 T,那么 ✳p 的型别不应该是 T，应该是 T&amp;.同理，如果 p 是一个不可修改值的迭代器，其 value type 是 T，那么 ✳p 的型别不应该是 const T,而应该是 const T&amp;。这里讨论的 ✳p 的型别，即所谓的 reference type。 pointer type 指针和引用有着非常密切的关系。如果传回一个左值，令它代表 p 所指之物是可能的，那么传回一个左值，令它代表 p 所指之物的地址也一定可以。也就是说，我们能够传回一个指针，指向迭代器所指之物。 iterator_category 这个型别表明了迭代器的类别。根据移动特性和施行操作，迭代器被分为五类：input iterator（只读，即这种迭代器所指的对象不允许外界改变）；output iterator（只写，即该迭代器所指的对象只能被外界改变，不能读取）；forward iterator（单向读写）；bidirectional iterator（双向读写）；random access iterator（随机读写）。 以上五种迭代器的类别，前三种支持 operator++，第四种再加上 operator–，第五种则涵盖所有指针算术能力，包括 p+n, p-n, p[n], p1-p2, p1&lt;p2。在设计算法时，应该尽量对迭代器的类型做一个明确的规定，这样才能在不同情况下提供最大的效率。假设有个算法可接受 forward iterator ,你给它传一个 random access iteator 进去，它当然也会接受，因为一个 random access iteator 必然是一个 forward iteator,但是从效率上来讲，这并不是最佳的方案。 Traits编程技法 traits用来提取对象的型别，对应的模板参数不管是泛化版本还是特化版本，通通都能准确的萃取出来。如果传进来的参数 I 定义有自己的 value type，那么通过 traits,萃取出来的 value type 就是 I::value type。如果是特化版本，例如 T✳，则萃取出来的 value type 就是 T。特别注意，const T✳，萃取出来后也是 T 而非 const T,这是因为我们的本意就是声明一个临时变量，使之与迭代器的 value type 相同，而如果声明一个无法赋值的变量，没有什么作用，因此，对于 const 类型的变量，萃取出来的 value type就会变成 non-const类型。]]></content>
       <categories>
-          
-          <category> 读书笔记 </category>
-          
+        <category>读书笔记</category>
       </categories>
-      
-      
-        <tags>
-            
-            <tag> STL </tag>
-            
-        </tags>
-      
-    </entry>
-    
-    
-    
-    <entry>
-      <title>我的第一篇博客</title>
-      <link href="/2019/07/13/%E7%AC%AC%E4%B8%80%E7%AF%87%E5%8D%9A%E5%AE%A2/"/>
-      <url>/2019/07/13/%E7%AC%AC%E4%B8%80%E7%AF%87%E5%8D%9A%E5%AE%A2/</url>
-      
-        <content type="html"><![CDATA[<h1 id="写博客的想法是怎么产生的"><a href="#写博客的想法是怎么产生的" class="headerlink" title="写博客的想法是怎么产生的"></a>写博客的想法是怎么产生的</h1><p>前两天在B站上偶然看见一个免费搭建个人博客的教程，于是产生了兴趣。尝试去搜索了一下，竟然发现有好多搭建博客的方法，实在是感觉自己好low，不过，总归现在发现还不算太晚（强行安慰。。）于是按照搜索的几种方法都进行了尝试，最终选择了用 hexo 配合 github 搭建了第一个属于自己的个人博客（正是此博客）。虽然现在看起来有点low，但是基本功能还算齐全，其他华丽的功能有待开发。  </p><h1 id="写博客的目的"><a href="#写博客的目的" class="headerlink" title="写博客的目的"></a>写博客的目的</h1><p>博客站点搭建好了，当然也要开始养成写博客的习惯了。之前在网上搜索一些问题的时候总是能看到各种大佬级别的博客，都写得特别好，虽然我也有过写博客的想法，但是一直没有付诸行动，这次搭建了自己的站点，再不写点就说不过去了，总不能就光秃秃的一个页面，什么内容也没有吧。所以借着这次机会，总算能治一治我的拖延症了。至于本博客的目的，就当是记录自己的生活，学习过程。如果能帮到别人，那自然是更好。</p><h1 id="博客内容"><a href="#博客内容" class="headerlink" title="博客内容"></a>博客内容</h1><p>对于博客内容，我初步打算分为以下几个类别：生活、技术、读书笔记等。生活类的文章主要谈一些我所经历过的值得记录的事情以及感想；技术方面主要就是在学习过程中的一些积累（这方面可能会写的比较多一点）。读书笔记则会在我每读完一本书的时候做一些总结，方便以后查阅（主要是指技术书籍）。当然后续还有其他有趣的版块分类，我也会加进去。</p><h1 id="期待的样子"><a href="#期待的样子" class="headerlink" title="期待的样子"></a>期待的样子</h1><p> 我所期待的博客当然是不仅能够连贯地记录自己的生活，而且能够利用自己的知识帮助更多的人。然而，道理我们都懂，一口吃不成胖子，而且万事开头难，所以要一步一步来，努力把它打造成自己喜欢的样子。</p>]]></content>
-      
-      
+      <tags>
+        <tag>STL</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title><![CDATA[STL源码剖析（1）]]></title>
+    <url>%2F2019%2F07%2F26%2FSTL%E6%BA%90%E7%A0%81%E5%89%96%E6%9E%90%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0%EF%BC%881%EF%BC%89%2F</url>
+    <content type="text"><![CDATA[写在前面的话 近段时间看了侯捷老师的《STL源码剖析》，看第一遍的时候一头雾水，反复多看几遍，似乎明白了一些。因此将学到的知识做一个记录，也算是记录自己的学习过程。本系列博客主要记录一些宏观理解性的东西，具体的代码实现还是要仔细品味原书。 概览 STL即C++标准模板库，主要由六大部件组成，分别是：分配器、容器、迭代器、算法、仿函数、适配器。在讲述这些主要部件之前，先来了解一下面向对象编程和泛型编程，面向对象编程（Object-Oriented programming，简称OOP）企图将数据和处理数据的方法放到一起，例如，在C++的类中，一般会有成员变量和处理成员变量的成员函数，在需要使用的时候创建一个对象，然后以对象来调用它们。而泛型编程（Generic Programming,简称GP）是将数据和处理方法分离开来，这里的处理方法通常是全局函数，例如STL中的算法和容器，两者互不影响，需要的时候通过迭代器来传递信息。 好了，接下来就从这六大部件出发，了解STL的内部关系。这篇博文主要记录分配器的重点。 分配器（allocators） allocator主要是用来管理存储空间，它当中的 allocate() 调用 operator new() 来分配空间，其中 operator new() 中又调用了C语言中的 malloc() 函数，而 deallocate() 则调用了operator delete(),其中，operator delete() 又调用了 free() 来释放内存。以上谈的这种分配器是标准规范下的实现方法。而SGI STL有一种默认的分配器 alloc ，它的每一个容器都已经指定其缺省的空间分配器为 alloc，例如下面的 vector 声明： template &lt;class T, class Alloc = alloc&gt; class vector{…}; 这其中就是缺省使用的 alloc 为分配器。由于调用 malloc() 只会寻找整片比较大的空间，对于一些小型区块，可能造成内存浪费的问题,因此，SGI设计了双级分配器，第一级分配器直接使用 malloc() 和 free()，第二级分配器则视情况采用不同的策略：当配置区块超过128字节时，视之为 “足够大”，便调用第一级分配器 ，当分配区块小于128字节时，视之为 “过小”，为了降低额外负担（合理利用资源），就使用第二级分配器。 而第二级分配器的具体实现是以内存池管理的形式，每次配置一块大内存，然后维护对应的自由链表（可增加，也可删减），下次如果再有相同大小的内存需求，就直接从自由链表中取出，如果使用方释放了小块内存，则由分配器回收到对应的链表中。为了方便管理，SGI的第二级分配器会主动将任何小额区块的内存需求上调至8的倍数（例如使用者需要30字节，就自动调整为32字节），并维护16个自由链表，各自管理的大小分别为：8，16，24，32，40，56，64，72，80，88，96，104，112，128字节的小额区块。 因此，整个的内存分配释放过程即可归纳为如下流程：分配器拥有标准接口函数 allocate()，此函数首先判断区块的大小，大于128字节就调用第一级分配器，小于128字节就检查对应的自由链表。如果自由链表内有可用的区块，就直接拿来用，如果没有可用的区块，就将区块大小上调至8的倍数，然后重新填充空间。 在释放的时候，同样由分配器的标准接口函数 deallocate() 首先判断区块大小，大于128字节就调用第一级分配器，小于128字节就找出对应的自由链表，将区块回收。]]></content>
       <categories>
-          
-          <category> 生活杂谈 </category>
-          
+        <category>读书笔记</category>
       </categories>
-      
-      
-        <tags>
-            
-            <tag> 生活杂谈 </tag>
-            
-        </tags>
-      
-    </entry>
-    
-    
-    
-    <entry>
-      <title>Hello World</title>
-      <link href="/2019/07/10/hello-world/"/>
-      <url>/2019/07/10/hello-world/</url>
-      
-        <content type="html"><![CDATA[<p>Welcome to <a href="https://hexo.io/" target="_blank" rel="noopener">Hexo</a>! This is your very first post. Check <a href="https://hexo.io/docs/" target="_blank" rel="noopener">documentation</a> for more info. If you get any problems when using Hexo, you can find the answer in <a href="https://hexo.io/docs/troubleshooting.html" target="_blank" rel="noopener">troubleshooting</a> or you can ask me on <a href="https://github.com/hexojs/hexo/issues" target="_blank" rel="noopener">GitHub</a>.</p><h2 id="hello-word"><a href="#hello-word" class="headerlink" title="hello word"></a>hello word</h2><h2 id="Quick-Start"><a href="#Quick-Start" class="headerlink" title="Quick Start"></a>Quick Start</h2><h3 id="Create-a-new-post"><a href="#Create-a-new-post" class="headerlink" title="Create a new post"></a>Create a new post</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo new <span class="string">"My New Post"</span></span><br></pre></td></tr></table></figure><p>More info: <a href="https://hexo.io/docs/writing.html" target="_blank" rel="noopener">Writing</a></p><h3 id="Run-server"><a href="#Run-server" class="headerlink" title="Run server"></a>Run server</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo server</span><br></pre></td></tr></table></figure><p>More info: <a href="https://hexo.io/docs/server.html" target="_blank" rel="noopener">Server</a></p><h3 id="Generate-static-files"><a href="#Generate-static-files" class="headerlink" title="Generate static files"></a>Generate static files</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo generate</span><br></pre></td></tr></table></figure><p>More info: <a href="https://hexo.io/docs/generating.html" target="_blank" rel="noopener">Generating</a></p><h3 id="Deploy-to-remote-sites"><a href="#Deploy-to-remote-sites" class="headerlink" title="Deploy to remote sites"></a>Deploy to remote sites</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo deploy</span><br></pre></td></tr></table></figure><p>More info: <a href="https://hexo.io/docs/deployment.html" target="_blank" rel="noopener">Deployment</a></p>]]></content>
-      
-      
-      
-    </entry>
-    
-    
-  
-  
+      <tags>
+        <tag>STL</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title><![CDATA[我的第一篇博客]]></title>
+    <url>%2F2019%2F07%2F13%2F%E7%AC%AC%E4%B8%80%E7%AF%87%E5%8D%9A%E5%AE%A2%2F</url>
+    <content type="text"><![CDATA[写博客的想法是怎么产生的前两天在B站上偶然看见一个免费搭建个人博客的教程，于是产生了兴趣。尝试去搜索了一下，竟然发现有好多搭建博客的方法，实在是感觉自己好low，不过，总归现在发现还不算太晚（强行安慰。。）于是按照搜索的几种方法都进行了尝试，最终选择了用 hexo 配合 github 搭建了第一个属于自己的个人博客（正是此博客）。虽然现在看起来有点low，但是基本功能还算齐全，其他华丽的功能有待开发。 写博客的目的博客站点搭建好了，当然也要开始养成写博客的习惯了。之前在网上搜索一些问题的时候总是能看到各种大佬级别的博客，都写得特别好，虽然我也有过写博客的想法，但是一直没有付诸行动，这次搭建了自己的站点，再不写点就说不过去了，总不能就光秃秃的一个页面，什么内容也没有吧。所以借着这次机会，总算能治一治我的拖延症了。至于本博客的目的，就当是记录自己的生活，学习过程。如果能帮到别人，那自然是更好。 博客内容对于博客内容，我初步打算分为以下几个类别：生活、技术、读书笔记等。生活类的文章主要谈一些我所经历过的值得记录的事情以及感想；技术方面主要就是在学习过程中的一些积累（这方面可能会写的比较多一点）。读书笔记则会在我每读完一本书的时候做一些总结，方便以后查阅（主要是指技术书籍）。当然后续还有其他有趣的版块分类，我也会加进去。 期待的样子 我所期待的博客当然是不仅能够连贯地记录自己的生活，而且能够利用自己的知识帮助更多的人。然而，道理我们都懂，一口吃不成胖子，而且万事开头难，所以要一步一步来，努力把它打造成自己喜欢的样子。]]></content>
+      <categories>
+        <category>生活杂谈</category>
+      </categories>
+      <tags>
+        <tag>生活杂谈</tag>
+      </tags>
+  </entry>
 </search>
