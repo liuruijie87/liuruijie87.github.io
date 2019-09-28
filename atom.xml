@@ -6,7 +6,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="https://liuruijie87.github.io/"/>
-  <updated>2019-09-17T07:59:16.312Z</updated>
+  <updated>2019-09-28T06:25:32.457Z</updated>
   <id>https://liuruijie87.github.io/</id>
   
   <author>
@@ -15,6 +15,31 @@
   </author>
   
   <generator uri="http://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>C++零碎知识点</title>
+    <link href="https://liuruijie87.github.io/2019/09/28/C++%E9%9B%B6%E7%A2%8E%E7%9F%A5%E8%AF%86%E7%82%B9/"/>
+    <id>https://liuruijie87.github.io/2019/09/28/C++零碎知识点/</id>
+    <published>2019-09-28T06:18:07.278Z</published>
+    <updated>2019-09-28T06:25:32.457Z</updated>
+    
+    <content type="html"><![CDATA[<p>　　1、逗号表达式是将括号中所有表达式的值算出来，但是只使用最后一个表达式的值。<br>　　2、构造函数是可以私有化的，但一般不会这样做，因为私有化的构造函数不能被new到，并且类不能通过该私有构造函数初始化（可以调用静态方法初始化）。<br>　　3、一个类中可以有任意个构造函数（可以函数重载），但只能有一个析构函数。无论何时，只要类的对象被创建，就会执行构造函数。　</p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;p&gt;　　1、逗号表达式是将括号中所有表达式的值算出来，但是只使用最后一个表达式的值。&lt;br&gt;　　2、构造函数是可以私有化的，但一般不会这样做，因为私有化的构造函数不能被new到，并且类不能通过该私有构造函数初始化（可以调用静态方法初始化）。&lt;br&gt;　　3、一个类中可以有任意个构
+      
+    
+    </summary>
+    
+      <category term="技术积累" scheme="https://liuruijie87.github.io/categories/%E6%8A%80%E6%9C%AF%E7%A7%AF%E7%B4%AF/"/>
+    
+    
+      <category term="C++知识点" scheme="https://liuruijie87.github.io/tags/C-%E7%9F%A5%E8%AF%86%E7%82%B9/"/>
+    
+  </entry>
   
   <entry>
     <title>effective C++（1）</title>

@@ -1,6 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
+    <title><![CDATA[C++零碎知识点]]></title>
+    <url>%2F2019%2F09%2F28%2FC%2B%2B%E9%9B%B6%E7%A2%8E%E7%9F%A5%E8%AF%86%E7%82%B9%2F</url>
+    <content type="text"><![CDATA[1、逗号表达式是将括号中所有表达式的值算出来，但是只使用最后一个表达式的值。 2、构造函数是可以私有化的，但一般不会这样做，因为私有化的构造函数不能被new到，并且类不能通过该私有构造函数初始化（可以调用静态方法初始化）。 3、一个类中可以有任意个构造函数（可以函数重载），但只能有一个析构函数。无论何时，只要类的对象被创建，就会执行构造函数。]]></content>
+      <categories>
+        <category>技术积累</category>
+      </categories>
+      <tags>
+        <tag>C++知识点</tag>
+      </tags>
+  </entry>
+  <entry>
     <title><![CDATA[effective C++（1）]]></title>
     <url>%2F2019%2F09%2F17%2Feffective%20C%2B%2B%EF%BC%881%EF%BC%89%2F</url>
     <content type="text"><![CDATA[01.C++总体来说包含四大部分内容，分别是：C语言部分（没有模板、异常、重载等概念）；面向对象部分（类、封装、继承、多态、虚函数等）；泛型编程部分（模板技术）；STL（容器、算法、迭代器等）。 02.对单纯常量，尽量以const对象或enums代替#define，因为宏定义是预处理器干的活，宏定义的记号名称有可能未被编译器看到，也许在编译器开始处理源码之前它就被预处理器移走了，因此编译会出错。而如果使用const等定义一个常量，编译器是一定会看到的，当然就会进入记号表内。 03.对于class专属常量，为了将常量的作用域限制于class内，必须让该常量成为class的一个成员。而为确保此常量至多只有一份实体，必须让它成为一个static成员。如下： 12345678class A&#123;private: static const int Num = 5; //常量声明式 int scores[Num]; ... &#125;;const int A::Num; //Num的定义 上面程序中，在声明的时候已经给常量做了初始化，对于class的static类型的专属常量，只要不取它们的地址，或者不需要用到定义式，则不提供定义式也可以，因为在声明的时候已经给了初值，所以在定义式中不可以再设初值。 04.对于形似函数的宏，最好用inline函数替换#define。 05.const修饰指针的时候，如果const出现在星号左边，表示被指物是常量，如果出现在星号右边，表示指针自身是常量，如果出现在星号两边，表示被指物和指针两者都是常量。注意：当被指物是常量时，const写在类型前和类型后都可以。 06.声明STL的迭代器为const和声明指针为const是一样的操作，但是声明迭代器所指物为const需要用const_iterator。 07.non-const成员函数可以调用const成员函数，反之则不行。 08.确保对象在使用之前已经被初始化，读取未初始化的值会导致不明确的行为。 09.对于大多数类型而言，比起先调用默认构造函数后再调用拷贝赋值操作符，单只调用一次拷贝构造函数是比较高效的。对于内置类型来说，其初始化和赋值的成本相同，但为了一致性，最好也通过初始值列表来初始化。 10.如果成员变量是const或引用，则必须初始化，不能被赋值。 11.成员变量的初始化顺序是以其声明顺序被初始化的，并且父类的变量先初始化，再子类。 12.如果某编译单元内的某个全局static对象的初始化使用了另一编译单元内的某个全局static对象，它所用到的这个对象可能尚未被初始化，因为C++对“定义于不同编译单元内的全局static对象”的初始化次序并无明确定义。为解决此问题，可以用一个函数来代替这个全局对象。如下： 123456789101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354//有问题的代码class FileSystem&#123;public: ... std::size_t num() const; ...&#125;;extern FileSystem tfs; //给客户使用的对象class Directory&#123;public: Directory(params); ...&#125;;Directory::Directory(params)&#123; ... std::size dis = tfs.num(); //使用tfs对象 ...&#125;Directory tempDir(params);//修改后的代码class FileSystem&#123;public: ... std::size_t num() const; ...&#125;;FileSystem&amp; tfs() //用该函数替换tfs对象&#123; static FileSystem fs; return fs;&#125;class Directory&#123;public: Directory(params); ...&#125;;Directory::Directory(params)&#123; ... std::size dis = tfs().num(); //改用tfs() ...&#125;Directory&amp; tempDir() //用该函数替换tempDir对象&#123; static Directory td; return td;&#125;]]></content>
