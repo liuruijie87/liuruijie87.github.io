@@ -6,7 +6,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="https://liuruijie87.github.io/"/>
-  <updated>2019-11-20T01:11:55.954Z</updated>
+  <updated>2019-11-22T05:33:15.382Z</updated>
   <id>https://liuruijie87.github.io/</id>
   
   <author>
@@ -21,7 +21,7 @@
     <link href="https://liuruijie87.github.io/2019/11/20/%E7%AE%97%E6%B3%95/"/>
     <id>https://liuruijie87.github.io/2019/11/20/算法/</id>
     <published>2019-11-20T01:06:22.363Z</published>
-    <updated>2019-11-20T01:11:55.954Z</updated>
+    <updated>2019-11-22T05:33:15.382Z</updated>
     
     <content type="html"><![CDATA[<p>#贪心算法</p><p>##思想<br>　　假设一个问题比较复杂，暂时找不到全局最优解，那么我们可以考虑把原问题拆成几个小问题（分而治之思想），分别求每个小问题的最优解，再把这些“局部最优解”叠起来，就“当作”整个问题的最优解了。<br>　　使用贪心算法的前提：<br>　　1、原问题复杂度过高；<br>　　2、求全局最优解的数学模型难以建立；<br>　　3、求全局最优解的计算量过大；<br>　　4、没有太大必要一定要求出全局最优解，“比较优”就可以。</p>]]></content>
     
@@ -47,7 +47,7 @@
     <link href="https://liuruijie87.github.io/2019/11/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F%E7%9F%A5%E8%AF%86%E7%82%B9/"/>
     <id>https://liuruijie87.github.io/2019/11/12/操作系统知识点/</id>
     <published>2019-11-12T12:23:10.452Z</published>
-    <updated>2019-11-13T10:33:11.638Z</updated>
+    <updated>2019-11-22T05:33:42.364Z</updated>
     
     <content type="html"><![CDATA[<p>#进程<br>　　1、进程就是一个程序的执行过程。<br>　　2、只有进程从内核态转移到用户态时，才可能发生抢占，进程在内核态下运行是不会被抢占的。<br>　　3、多线程是指操作系统在单个进程内支持多个并发执行路径的能力。<br>　　4、进程中所有线程共享该进程的状态和资源，它们驻留在同一块地址空间中，并且可以访问到相同的数据。当一个线程改变了内存中的一个数据项时，其他线程在访问该数据项时能看到变化后的结果。<br>　　5、在大多数操作系统中，独立进程间的通信通常需要内核的介入，以提供保护和通信所需要的机制。但是由于在同一个进程中的线程共享内存和文件，它们无需调用内核就可以通信。<br>　　6、进程的终止会导致进程中所有线程的终止。</p>]]></content>
     
