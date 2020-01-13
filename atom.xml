@@ -6,7 +6,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="https://liuruijie87.github.io/"/>
-  <updated>2019-12-12T02:12:46.763Z</updated>
+  <updated>2020-01-13T14:33:17.689Z</updated>
   <id>https://liuruijie87.github.io/</id>
   
   <author>
@@ -17,11 +17,36 @@
   <generator uri="http://hexo.io/">Hexo</generator>
   
   <entry>
+    <title>数据结构与算法学习笔记（1）</title>
+    <link href="https://liuruijie87.github.io/2020/01/13/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0%EF%BC%881%EF%BC%89/"/>
+    <id>https://liuruijie87.github.io/2020/01/13/数据结构与算法学习（1）/</id>
+    <published>2020-01-13T13:16:58.814Z</published>
+    <updated>2020-01-13T14:33:17.689Z</updated>
+    
+    <content type="html"><![CDATA[<h1 id="前记"><a href="#前记" class="headerlink" title="前记"></a>前记</h1><p>　　众所周知，数据结构和算法是编程当中的内功，只有把内功修炼深厚，才能应对各种招式的变化。如果每天做一些机械性质的增删改查，那是注定在编程道路上走不远的，因此，从本篇开始，进行数据结构和算法的学习，并以笔记的形式进行知识点的总结。</p><h2 id="基本复杂度分析"><a href="#基本复杂度分析" class="headerlink" title="基本复杂度分析"></a>基本复杂度分析</h2><p>　　复杂度分析是算法学习的精髓，可以说掌握了复杂度分析，算法学习就成功了一半。而最常用的复杂度表示方法就是大O表示法，这是表示代码执行时间或所占空间随数据规模增长的变化趋势的一种方法。当n很大时，你可以把它想象成100000，而公式中的低阶、常量、系数三部分并不影响增长趋势，所以都可以忽略，我们只需保留一个最大量级就可以了。</p><h3 id="时间复杂度分析"><a href="#时间复杂度分析" class="headerlink" title="时间复杂度分析"></a>时间复杂度分析</h3><p>　　1 只关注循环执行次数最多的一段代码。<br>　　2 加法法则：总的时间复杂度等于量级最大的那段代码的时间复杂度。即抽象公式：T(n)=T1(n)+T2(n)=Max(O(f(n)),O(g(n)))。<br>　　3 乘法法则：嵌套代码的复杂度等于嵌套内外代码复杂度的乘积。<br>　　常见的复杂度有O(1)、O(logn)、O(n)、O(nlogn)、O(n^2)、O(2^n)、O(n!)，其中O(2^n)和O(n!)为非多项式量级。<br>　　O(logn)比较难以分析，借用以下例子加以理解：</p><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">i = 1;</span><br><span class="line">while(i &lt;= n)&#123;</span><br><span class="line">i = i * 2;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure><p>可以看出i从1开始，每次循环就乘以2，当大于n时，循环结束，因此可以看出这是一个等比数列：2^0,2^1,2^2,2^3……2^k = n，其中k代表执行的次数，即k=logn（以2为底，用大O表示的话可以省略底数）。<br>　　另外，还有一种非寻常的情况，即代码的复杂度由两个数据的规模来决定，如下：</p><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">int cal(int m, int n) &#123;</span><br><span class="line">int sum_1 = 0;</span><br><span class="line">int i = 1;</span><br><span class="line">for (; i &lt; m; ++i) &#123;</span><br><span class="line">sum_1 = sum_1 + i;</span><br><span class="line">&#125;</span><br><span class="line">int sum_2 = 0;</span><br><span class="line">int j = 1;</span><br><span class="line">for (; j &lt; n; ++j) &#123;</span><br><span class="line">sum_2 = sum_2 + j;</span><br><span class="line">&#125;</span><br><span class="line">return sum_1 + sum_2;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure><p>可以看出，m和n表示两个数据规模，我们无法事先评估,m和n谁的量级大，所以复杂度就是O(m+n)。</p><h3 id="空间复杂度分析"><a href="#空间复杂度分析" class="headerlink" title="空间复杂度分析"></a>空间复杂度分析</h3><p>　　空间复杂度一般比较简单，能够通过肉眼看出来，例如下面代码：</p><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">void print(int n) &#123;</span><br><span class="line">int i = 0;</span><br><span class="line">int[] a = new int[n];</span><br><span class="line">for (i; i &lt;n; ++i) &#123;</span><br><span class="line">a[i] = i * i;</span><br><span class="line">&#125;</span><br><span class="line">for (i = n-1; i &gt;= 0; --i) &#123;</span><br><span class="line">print out a[i]</span><br><span class="line">&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure><p>　　可以看到，申请了一个大小为n的int类型数组，除此之外，剩下的代码都没有占用更多的空间，所以整段代码的空间复杂度就是O(n)。</p><h2 id="最好、最坏时间复杂度"><a href="#最好、最坏时间复杂度" class="headerlink" title="最好、最坏时间复杂度"></a>最好、最坏时间复杂度</h2><p>　　顾名思义，最好情况时间复杂度就是，在最理想的情况下，执行这段代码的时间复杂度。同理，最坏情况时间复杂度就是，在最糟糕的情况下，执行这段代码的时间复杂度。看代码：</p><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">int find(int[] array, int n, int x) &#123;</span><br><span class="line">int i = 0;</span><br><span class="line">int pos = -1;</span><br><span class="line">for (; i &lt; n; ++i) &#123;</span><br><span class="line">if (array[i] == x) &#123;</span><br><span class="line">pos = i;</span><br><span class="line">break;</span><br><span class="line">&#125;</span><br><span class="line">&#125;</span><br><span class="line">return pos;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure><p>　　上述代码中，在一个数组中查找x，如果x是第一个数，则最快，而如果x不存在数组中，则要遍历n次，因此，最好复杂度O(1)，最坏复杂度O(n)。</p><h2 id="平均情况时间复杂度"><a href="#平均情况时间复杂度" class="headerlink" title="平均情况时间复杂度"></a>平均情况时间复杂度</h2><p>　　还是上述代码，为了方便你理解，我们假设在数组中与不在数组中的概率都为1/2。另外，要查找的数据出现在0～n-1这n个位置的概率也是一样的，为1/n。所以，根据概率乘法法则，要查找的数据出现在0～n-1中任意位置的概率就是1/(2n)。因此平均时间复杂度的计算过程为：1/2n+2/2n+……+n/2n+n/2=(3n+1)/4。这个值就是加权平均值，用大O法表示即：O(n)。</p><h2 id="均摊时间复杂度"><a href="#均摊时间复杂度" class="headerlink" title="均摊时间复杂度"></a>均摊时间复杂度</h2><p>　　首先看代码：</p><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">int[] array = new int[n];</span><br><span class="line">int count = 0;</span><br><span class="line">void insert(int val) &#123;</span><br><span class="line">if (count == array.length) &#123;</span><br><span class="line">int sum = 0;</span><br><span class="line">for (int i = 0; i &lt; array.length; ++i) &#123;</span><br><span class="line">sum = sum + array[i];</span><br><span class="line">&#125;</span><br><span class="line">array[0] = sum;</span><br><span class="line">count = 1;</span><br><span class="line">&#125;</span><br><span class="line">array[count] = val;</span><br><span class="line">++count;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure><p>　　这段代码实现了一个往数组中插入数据的功能。当数组满了之后，也就是代码中的 count == array.length 时，我们用for循环遍历数组求和，并清空数组，将求和之后的sum值放到数组的第一个位置，然后再将新的数据插入。但如果数组一开始就有空闲空间，则直接将数据插入数组。<br>　　最理想的情况下，数组中有空闲空间，我们只需要将数据插入到数组下标为count的位置就可以了，所以最好情况时间复杂度为O(1)。最坏的情况下，数组中没有空闲空间了，我们需要先做一次数组的遍历求和，然后再将数据插入，所以最坏情况时间复杂度为O(n)。<br>　　假设数组的长度是n，根据数据插入的位置的不同，我们可以分为n种情况，每种情况的时间复杂度是O(1)。除此之外，还有一种“额外”的情况，就是在数组没有空闲空间时插入一个数据，这个时候的时间复杂度是O(n)。而且，这n+1种情况发生的概率一样，都是1/(n+1)。所以，根据加权平均的计算方法，我们求得的平均时间复杂度就是：1/(n+1)+1/(n+1)+……+n/(n+1)=O(1)。<br>　　每一次O(n)的插入操作，都会跟着n-1次O(1)的插入操作，所以把耗时多的那次操作均摊到接下来的n-1次耗时少的操作上，均摊下来，这一组连续的操作的均摊时间复杂度就是O(1)。这就是均摊分析的大致思路。<br>　　对一个数据结构进行一组连续操作中，大部分情况下时间复杂度都很低，只有个别情况下时间复杂度比较高，而且这些操作之间存在前后连贯的时序关系（即有规律），这个时候，我们就可以将这一组操作放在一块儿分析，看是否能将较高时间复杂度那次操作的耗时，平摊到其他那些时间复杂度比较低的操作上。而且，在能够应用均摊时间复杂度分析的场合，一般均摊时间复杂度就等于最好情况时间复杂度。</p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;h1 id=&quot;前记&quot;&gt;&lt;a href=&quot;#前记&quot; class=&quot;headerlink&quot; title=&quot;前记&quot;&gt;&lt;/a&gt;前记&lt;/h1&gt;&lt;p&gt;　　众所周知，数据结构和算法是编程当中的内功，只有把内功修炼深厚，才能应对各种招式的变化。如果每天做一些机械性质的增删改查，那是注定在编程道
+      
+    
+    </summary>
+    
+      <category term="算法学习" scheme="https://liuruijie87.github.io/categories/%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0/"/>
+    
+    
+      <category term="算法" scheme="https://liuruijie87.github.io/tags/%E7%AE%97%E6%B3%95/"/>
+    
+  </entry>
+  
+  <entry>
     <title>数据结构知识点</title>
     <link href="https://liuruijie87.github.io/2019/12/10/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E7%9F%A5%E8%AF%86%E7%82%B9/"/>
     <id>https://liuruijie87.github.io/2019/12/10/数据结构知识点/</id>
     <published>2019-12-10T02:29:22.283Z</published>
-    <updated>2019-12-12T02:12:46.763Z</updated>
+    <updated>2020-01-13T13:23:34.375Z</updated>
     
     <content type="html"><![CDATA[<h1 id="树"><a href="#树" class="headerlink" title="树"></a>树</h1><p>　　1、一个节点所拥有子树的个数被称为它的度。度为0的节点被称为叶节点。树的度等于树中所有节点的度的最大值。<br>　　2、一个节点的层次通过令根节点位于第一层来定义（有些书中将根节点的层次定义为0）。如果一个节点位于层次n，那么它的孩子位于层次n+1。树的高度或深度定义为树中节点的最大层次。<br>　　3、位于二叉树第i层的节点个数最多为2^(i-1),i&gt;=1。深度为k的二叉树的最大节点个数为2^k-1，k&gt;=1。<br>　　4、二叉树的遍历分为前序、中序、后序遍历，例如前序遍历是指：在遍历某一节点的左右子树之前先访问该节点。中序和后序与此类似。<br>　　5、二叉搜索树（BST）的节点放置规则：任何节点的键值一定大于其左子树中的每一个节点的键值，并小于其右子树中的每一个节点的键值。因此，从根节点一直往左走，直到无左路可走，即得最小元素，从根节点一直往右走，直到无右路可走，即得最大元素。</p>]]></content>
     
@@ -37,7 +62,7 @@
       <category term="技术积累" scheme="https://liuruijie87.github.io/categories/%E6%8A%80%E6%9C%AF%E7%A7%AF%E7%B4%AF/"/>
     
     
-      <category term="技术" scheme="https://liuruijie87.github.io/tags/%E6%8A%80%E6%9C%AF/"/>
+      <category term="数据结构" scheme="https://liuruijie87.github.io/tags/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/"/>
     
   </entry>
   
@@ -122,7 +147,7 @@
     <link href="https://liuruijie87.github.io/2019/11/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F%E7%9F%A5%E8%AF%86%E7%82%B9/"/>
     <id>https://liuruijie87.github.io/2019/11/12/操作系统知识点/</id>
     <published>2019-11-12T12:23:10.452Z</published>
-    <updated>2019-12-19T12:51:09.641Z</updated>
+    <updated>2020-01-13T13:22:17.039Z</updated>
     
     <content type="html"><![CDATA[<h1 id="内存管理"><a href="#内存管理" class="headerlink" title="内存管理"></a>内存管理</h1><h2 id="x86-32硬件-内存架构"><a href="#x86-32硬件-内存架构" class="headerlink" title="x86-32硬件-内存架构"></a>x86-32硬件-内存架构</h2><p>　  1、地址是访问内存空间的索引。<br>　　2、80386是32位机器，即可寻址的范围是2^32=4G字节。<br>　　3、物理内存空间是计算机提交到总线上的用于访问计算机上的内存和外设的最终地址。一个计算机中只有一个物理地址空间。<br>　　4、线性地址空间是在操作系统的虚拟内存管理下，每个运行的应用程序能访问的地址空间。每个运行的程序都认为自己独享整个计算机系统的地址空间，这样可以让多个运行的应用程序之间相互隔离。<br>　　5、逻辑地址空间是应用程序直接使用的地址空间。</p><h2 id="内存使用与分段"><a href="#内存使用与分段" class="headerlink" title="内存使用与分段"></a>内存使用与分段</h2><p>　　1、重定位：修改程序中的地址（是相对地址）。<br>　　2、编译时重定位的程序只能放在内存固定位置，载入时重定位的程序一旦载入内存就不能动了。因此重定位最适合的时机是运行时重定位，即在运行每条指令时才完成重定位。（每执行一条指令都要从逻辑地址算出物理地址）每个进程有各自的基地址，在每条指令执行的第一步先从PCB中取出这个基地址。<br>　　3、内存如何使用？首先找一块空地址，得到基地址，然后将基地址写入PCB寄存器中，在程序运行中，每执行一条指令，首先从PCB中取出基地址，再加上程序中的逻辑地址，即可翻译成物理地址，这样内存就使用起来了。当进程间切换时，PCB中的值也会跟着变化。　　</p><h2 id="分段和分页机制"><a href="#分段和分页机制" class="headerlink" title="分段和分页机制"></a>分段和分页机制</h2><p>　　1、分段和分页是两种不同的地址变换机制，它们都对整个地址变换操作提供独立的处理阶段。尽管两种机制都使用存储在内存中的变换表，但所用的表结构不同。实际上，段表存储在线性地址空间，而页表存储在物理地址空间。因而段变换表可由分页机制重新定位而无需段机制的信息或合作。段变换机制把虚拟地址（逻辑地址）变换成线性地址，并且在线性地址中访问自己的表，但是并不知晓分页机制把这些线性地址转换到物理地址的过程。类似地，分页机制也不知道程序产生地址的虚拟地址空间。分页机制只是简单地把线性地址转换成物理地址，并且在物理内存中访问自己的转换表。</p><h1 id="CPU管理"><a href="#CPU管理" class="headerlink" title="CPU管理"></a>CPU管理</h1><p>　　</p><h2 id="进程"><a href="#进程" class="headerlink" title="进程"></a>进程</h2><p>　　1、进程就是一个程序的执行过程。<br>　　2、只有进程从内核态转移到用户态时，才可能发生抢占，进程在内核态下运行是不会被抢占的。<br>　　3、多线程是指操作系统在单个进程内支持多个并发执行路径的能力。<br>　　4、进程中所有线程共享该进程的状态和资源，它们驻留在同一块地址空间中，并且可以访问到相同的数据。当一个线程改变了内存中的一个数据项时，其他线程在访问该数据项时能看到变化后的结果。<br>　　5、在大多数操作系统中，独立进程间的通信通常需要内核的介入，以提供保护和通信所需要的机制。但是由于在同一个进程中的线程共享内存和文件，它们无需调用内核就可以通信。<br>　　6、进程的终止会导致进程中所有线程的终止。<br>　　7、进程从创建（Linux下调用fork()）到结束的整个过程就是进程的生命期，进程在其生命期中的运行轨迹实际上就表现为进程状态的多次切换，如进程创建以后会成为就绪态；当该进程被调度以后会切换到运行态；在运行的过程中如果启动了一个文件读写操作，操作系统会将该进程切换到阻塞态（等待态）从而让出CPU；当文件读写完毕以后，操作系统会在将其切换成就绪态，等待进程调度算法来调度该进程执行……<br>　　8、用户态到内核态只能通过中断的方式。</p><h2 id="进程同步与死锁"><a href="#进程同步与死锁" class="headerlink" title="进程同步与死锁"></a>进程同步与死锁</h2><p>　　1、临界区：一次只允许一个进程进入该进程修改其信号量的那一段代码。<br>　　2、临界区代码保护原则：互斥进入，即如果一个进程在临界区中执行，则其他进程不允许进入。<br>　　3、好的临界区保护原则：（1）有空让进：当若干进程要求进入空闲临界区时，应尽快使一进程进入临界区。（2）有限等待：从进程发出进入请求到允许进入，不能无限等待。</p><h2 id="线程"><a href="#线程" class="headerlink" title="线程"></a>线程</h2><p>　　1、线程保留了并发的优点，避免了进程切换代价。<br>　　2、用户级线程，在用户态下切换。如果某个线程调用硬件在内核中发生阻塞，内核就会切换到其他进程，那么在之前那个进程下的用户级线程就会卡在那不动。<br>　　3、用户级线程用了两个栈，而内核级线程用了两套栈。即用户级线程切换的时候，TCB切换，用户栈也跟着切换；内核级线程切换的时候，TCB切换，用户栈和内核栈都要跟着切换。<br>　　4、内核级线程在内核栈之间切换的时候，通过TCB找到内核栈指针，然后通过ret切到某个内核程序，最后再用CS:PC切到用户程序。</p><h2 id="系统调用"><a href="#系统调用" class="headerlink" title="系统调用"></a>系统调用</h2><p>　　1、在通常情况下，调用系统调用和调用一个普通的自定义函数在代码上并没有什么区别，但调用后发生的事情有很大不同。调用自定义函数是通过 call 指令直接跳转到该函数的地址，继续运行。而调用系统调用，是调用系统库中为该系统调用编写的一个接口函数，叫 API（Application Programming Interface）。API并不能完成系统调用的真正功能，它要做的是去调用真正的系统调用，过程是：把系统调用的编号存入EAX；把函数参数存入其它通用寄存器；触发 0x80 号中断（int 0x80），进入内核态，调用相关的内核函数。</p>]]></content>
     
@@ -135,7 +160,7 @@
     
     </summary>
     
-      <category term="课程笔记" scheme="https://liuruijie87.github.io/categories/%E8%AF%BE%E7%A8%8B%E7%AC%94%E8%AE%B0/"/>
+      <category term="操作系统学习" scheme="https://liuruijie87.github.io/categories/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F%E5%AD%A6%E4%B9%A0/"/>
     
     
       <category term="操作系统" scheme="https://liuruijie87.github.io/tags/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/"/>
