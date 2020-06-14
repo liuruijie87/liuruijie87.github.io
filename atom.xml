@@ -6,7 +6,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="https://liuruijie87.github.io/"/>
-  <updated>2020-06-01T05:03:39.156Z</updated>
+  <updated>2020-06-14T13:23:01.805Z</updated>
   <id>https://liuruijie87.github.io/</id>
   
   <author>
@@ -15,6 +15,31 @@
   </author>
   
   <generator uri="http://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>网络编程学习笔记（四）--几种高性能方案</title>
+    <link href="https://liuruijie87.github.io/2020/06/14/%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0%EF%BC%88%E5%9B%9B%EF%BC%89--%E9%AB%98%E6%80%A7%E8%83%BD%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88/"/>
+    <id>https://liuruijie87.github.io/2020/06/14/网络编程学习笔记（四）--高性能解决方案/</id>
+    <published>2020-06-14T13:19:56.634Z</published>
+    <updated>2020-06-14T13:23:01.805Z</updated>
+    
+    <content type="html"><![CDATA[<h1 id="I-O多路复用"><a href="#I-O多路复用" class="headerlink" title="I/O多路复用"></a>I/O多路复用</h1><p>　　我们假设设计了这样一个应用程序，该程序从标准输入接收数据输入，然后通过套接字发送出去，同时，该程序也通过套接字接收对方发送的数据流。我们可以使用fgets方法等待标准输入，但是一旦这样做，就没有办法在套接字有数据的时候读出数据；我们也可以使用read方法等待套接字有数据返回，但是这样做，也没有办法在标准输入有数据的情况下，读入数据并发送给对方。<br>　　I/O多路复用的设计初衷就是解决这样的场景。我们可以把标准输入、套接字等都看做I/O的一路，多路复用的意思，就是在任何一路I/O有“事件”发生的情况下，通知应用程序去处理相应的I/O事件，这样我们的程序就变成了“多面手”，在同一时刻仿佛可以处理多个I/O事件。像刚才的例子，使用I/O复用以后，如果标准输入有数据，立即从标准输入读入数据，通过套接字发送出去；如果套接字有数据可以读，立即可以读出数据。</p><h2 id="select函数"><a href="#select函数" class="headerlink" title="select函数"></a>select函数</h2><p>　　select函数就是这样一种常见的I/O多路复用技术，使用select函数，通知内核挂起进程，当一个或多个I/O事件发生后，控制权返还给应用程序，由应用程序进行I/O事件的处理。<br>select函数的使用方法<br>　　select函数的使用方法有点复杂，我们先看一下它的声明：</p><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">int select(int maxfd, fd_set *readset, fd_set *writeset, fd_set *exceptset, const struct *timeval);</span><br><span class="line">返回：若有就绪描述符则为其数目，若超时则为 0，若出错则为 -1</span><br></pre></td></tr></table></figure><p>　　在这个函数中，maxfd表示的是待测试的描述符基数，它的值是待测试的最大描述符加1。比如现在的select待测试的描述符集合是{0,1,4}，那么maxfd就是5，紧接着的是三个描述符集合，分别是读描述符集合readset、写描述符集合writeset和异常描述符集合exceptset，这三个分别通知内核，在哪些描述符上检测数据可以读，可以写和有异常发生。<br>　　那么如何设置这些描述符集合呢？以下的宏可以帮助到我们。</p><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">void FD_ZERO(fd_set *fdset); </span><br><span class="line">void FD_SET(int fd, fd_set *fdset); </span><br><span class="line">void FD_CLR(int fd, fd_set *fdset); </span><br><span class="line">int FD_ISSET(int fd, fd_set *fdset);</span><br></pre></td></tr></table></figure><p>　　如果刚入门，理解这些宏可能有些困难。我们可以这样想象，下面一个向量代表了一个描述符集合，其中，这个向量的每个元素都是二机制数中的0或者1。<br>　　a[maxfd-1], …, a[1], a[0]<br>　　我们按照这样的思路来理解这些宏：其中0代表不需要处理，1代表需要处理。实际上，很多系统是用一个整型数组来表示一个描述字集合的，一个32位的整型数可以表示32个描述字，例如第一个整型数表示0-31描述字，第二个整型数可以表示32-63描述字，以此类推。这个时候再来理解为什么描述字集合{0,1,4}，对应的maxfd是5，而不是4，就比较方便了。因为这个向量对应的是这样的：a[4],a[3],a[2],a[1],a[0]。待测试的描述符个数显然是5，而不是4。<br>　　三个描述符集合中的每一个都可以设置成空，这样就表示不需要内核进行相关的检测。最后一个参数是timeval结构体时间：</p><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">struct timeval </span><br><span class="line">&#123; </span><br><span class="line">long tv_sec; /* seconds */ </span><br><span class="line">long tv_usec; /* microseconds */ </span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure><p>　　这个参数设置成不同的值，会有不同的可能：第一个可能是设置成空(NULL)，表示如果没有I/O事件发生，则select一直等待下去。第二个可能是设置一个非零的值，这个表示等待固定的一段时间后从select阻塞调用中返回。第三个可能是将tv_sec和tv_usec都设置成0，表示根本不等待，检测完毕立即返回。这种情况使用得比较少。<br>　　select函数检测套接字可读有以下几种情况：第一种情况是套接字接收缓冲区有数据可以读，如果我们使用read函数去执行读操作，肯定不会被阻塞，而是会直接读到这部分数据。第二种情况是对方发送了FIN，使用read函数执行读操作，不会被阻塞，直接返回0。第三种情况是针对一个监听套接字而言的，有已经完成的连接建立，此时使用accept函数去执行不会阻塞，直接返回已经完成的连接。第四种情况是套接字有错误待处理，使用read函数去执行读操作，不阻塞，且返回-1。总结成一句话就是，内核通知我们套接字有数据可以读了，使用read函数不会阻塞。<br>　　select检测套接字可写，完全是基于套接字本身的特性来说的，具体来说有以下几种情况。第一种是套接字发送缓冲区足够大，如果我们使用非阻塞套接字进行write操作，将不会被阻塞，直接返回。第二种是连接的写半边已经关闭，如果继续进行写操作将会产生SIGPIPE信号。第三种是套接字上有错误待处理，使用write函数去执行写操作，不阻塞，且返回 -1。总结成一句话就是，内核通知我们套接字可以往里写了，使用write函数就不会阻塞。</p><h2 id="poll：另一种I-O多路复用"><a href="#poll：另一种I-O多路复用" class="headerlink" title="poll：另一种I/O多路复用"></a>poll：另一种I/O多路复用</h2><p>　　select方法是多个UNIX平台支持的非常常见的I/O多路复用技术，它通过描述符集合来表示检测的I/O对象，通过三个不同的描述符集合来描述I/O事件：可读、可写和异常。但是select有一个缺点，那就是所支持的文件描述符的个数是有限的。在Linux系统中，select的默认最大值为1024。<br>　　poll是除了select之外，另一种普遍使用的I/O多路复用技术，和select相比，它和内核交互的数据结构有所变化，另外，也突破了文件描述符的个数限制。下面是poll函数的原型：</p><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">int poll(struct pollfd *fds, unsigned long nfds, int timeout);</span><br><span class="line">返回值：若有就绪描述符则为其数目，若超时则为 0，若出错则为 -1</span><br></pre></td></tr></table></figure><p>　　这个函数里面输入了三个参数，第一个参数是一个pollfd的数组。其中pollfd的结构如下：</p><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">struct pollfd </span><br><span class="line">&#123; </span><br><span class="line">int fd; /* file descriptor */ </span><br><span class="line">short events; /* events to look for */ </span><br><span class="line">short revents; /* events returned */ </span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure><p>　　这个结构体由三个部分组成，首先是描述符fd，然后是描述符上待检测的事件类型events，注意这里的events可以表示多个不同的事件，具体的实现可以通过使用二进制掩码位操作来完成，例如，POLLIN和POLLOUT可以表示读和写事件。</p><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">#define POLLIN 0x0001 /* any readable data available */ </span><br><span class="line">#define POLLPRI 0x0002 /* OOB/Urgent readable data */ </span><br><span class="line">#define POLLOUT 0x0004 /* file descriptor is writeable */</span><br></pre></td></tr></table></figure><p>　　和select非常不同的地方在于，poll每次检测之后的结果不会修改原来的传入值，而是将结果保留在revents字段中，这样就不需要每次检测完都得重置待检测的描述字和感兴趣的事件。我们可以把revents理解成“returned events”。<br>　　events类型的事件可以分为两大类。第一类是可读事件，有以下几种：</p><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">#define POLLIN 0x0001 /* any readable data available */ </span><br><span class="line">#define POLLPRI 0x0002 /* OOB/Urgent readable data */ </span><br><span class="line">#define POLLRDNORM 0x0040 /* non-OOB/URG data available */ </span><br><span class="line">#define POLLRDBAND 0x0080 /* OOB/Urgent readable data */</span><br></pre></td></tr></table></figure><p>　　一般我们在程序里面有POLLIN即可。套接字可读事件和select的readset基本一致，是系统内核通知应用程序有数据可以读，通过read函数执行操作不会被阻塞。<br>　　第二类是可写事件，有以下几种：</p><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">#define POLLOUT 0x0004 /* file descriptor is writeable */ </span><br><span class="line">#define POLLWRNORM POLLOUT /* no write type differentiation */ </span><br><span class="line">#define POLLWRBAND 0x0100 /* OOB/Urgent data can be written */</span><br></pre></td></tr></table></figure><p>　　一般我们在程序里面统一使用POLLOUT。套接字可写事件和select的writeset基本一致，是系统内核通知套接字缓冲区已准备好，通过write函数执行写操作不会被阻塞。以上两大类的事件都可以在“returned events”得到复用。还有另一大类事件，没有办法通过poll向系统内核递交检测请求，只能通过“returned events”来加以检测，这类事件是各种错误事件。</p><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">#define POLLERR 0x0008 /* 一些错误发送 */ </span><br><span class="line">#define POLLHUP 0x0010 /* 描述符挂起 */ </span><br><span class="line">#define POLLNVAL 0x0020 /* 请求的事件无效 */</span><br></pre></td></tr></table></figure><p>　　我们再回过头看一下poll函数的原型。参数nfds描述的是数组fds的大小，简单说，就是向poll申请的事件检测的个数。最后一个参数timeout，描述了poll的行为。如果是一个小于0的数，表示在有事件发生之前永远等待；如果是0，表示不阻塞进程，立即返回；如果是一个大于0的数，表示poll调用方等待指定的毫秒数后返回。关于返回值，当有错误发生时，poll函数的返回值为-1；如果在指定的时间到达之前没有任何事件发生，则返回0，否则就返回检测到的事件个数，也就是“returned events”中非0的描述符个数。<br>　　poll函数有一点非常好，如果我们不想对某个pollfd结构进行事件检测，可以把它对应的pollfd结构的fd成员设置成一个负值。这样，poll函数将忽略这样的events事件，检测完成以后，所对应的“returned events”的成员值也将设置为0。和select函数对比一下，我们发现poll函数和select不一样的地方就是，在select里面，文件描述符的个数已经随着fd_set的实现而固定，没有办法对此进行配置；而在poll函数里，我们可以控制pollfd结构的数组大小，这意味着我们可以突破原来select函数最大描述符的限制，在这种情况下，应用程序调用者需要分配pollfd数组并通知poll函数该数组的大小。<br>　　poll是另一种在各种UNIX系统上被广泛支持的I/O多路复用技术，虽然名声没有select那么响，能力一点不比select差，而且因为可以突破select文件描述符的个数限制，在高并发的场景下尤其占优势。</p><h1 id="非阻塞I-O"><a href="#非阻塞I-O" class="headerlink" title="非阻塞I/O"></a>非阻塞I/O</h1><p>　　当应用程序调用阻塞I/O完成某个操作时，应用程序会被挂起，等待内核完成操作，感觉应用程序像是被“阻塞”了一样。实际上，内核所做的事情是将CPU时间切换给其他有需要的进程，网络应用程序在这种情况下就会得不到CPU时间做该做的事情。非阻塞I/O则不然，当应用程序调用非阻塞I/O完成某个操作时，内核立即返回，不会把CPU时间切换给其他进程，应用程序在返回后，可以得到足够的CPU时间继续完成其他事情。</p><h2 id="非阻塞I-O读操作"><a href="#非阻塞I-O读操作" class="headerlink" title="非阻塞I/O读操作"></a>非阻塞I/O读操作</h2><p>　　如果套接字对应的接收缓冲区没有数据可读，在非阻塞情况下read调用会立即返回，一般返回EWOULDBLOCK或EAGAIN出错信息。在这种情况下，出错信息是需要小心处理，比如后面再次调用read操作，而不是直接作为错误直接返回。这就好像去书店买书没买到离开一样，需要不断进行又一次轮询处理。</p><h2 id="非阻塞I-O写操作"><a href="#非阻塞I-O写操作" class="headerlink" title="非阻塞I/O写操作"></a>非阻塞I/O写操作</h2><p>　　在阻塞I/O情况下，write函数返回的字节数，和输入的参数总是一样的。而在非阻塞I/O的情况下，如果套接字的发送缓冲区已达到了极限，不能容纳更多的字节，那么操作系统内核会尽最大可能从应用程序拷贝数据到发送缓冲区中，并立即从write等函数调用中返回。可想而知，在拷贝动作发生的瞬间，有可能一个字符也没拷贝，有可能所有请求字符都被拷贝完成，那么这个时候就需要返回一个数值，告诉应用程序到底有多少数据被成功拷贝到了发送缓冲区中，应用程序需要再次调用write函数，以输出未完成拷贝的字节。<br>　　write等函数是可以同时作用到阻塞I/O和非阻塞I/O上的，为了复用一个函数，处理非阻塞和阻塞I/O多种情况，设计出了写入返回值，并用这个返回值表示实际写入的数据大小。也就是说，非阻塞I/O和阻塞I/O处理的方式是不一样的。非阻塞I/O需要这样：拷贝→返回→再拷贝→再返回。而阻塞I/O需要这样：拷贝→直到所有数据拷贝至发送缓冲区完成→返回。不过在实战中，可以不用区别阻塞和非阻塞I/O，使用循环的方式来写入数据就好了。只不过在阻塞I/O的情况下，循环只执行一次就结束了。<br>　　下面通过一张表来总结一下read和write在阻塞模式和非阻塞模式下的不同行为特性：</p><p>　　关于read和write还有几个结论:<br>　　1.read总是在接收缓冲区有数据时就立即返回，不是等到应用程序给定的数据充满才返回。当接收缓冲区为空时，阻塞模式会等待，非阻塞模式立即返回-1，并有EWOULDBLOCK或EAGAIN错误。<br>　　2.和read不同，阻塞模式下，write只有在发送缓冲区足以容纳应用程序的输出字节时才返回；而非阻塞模式下，则是能写入多少就写入多少，并返回实际写入的字节数。<br>　　3.阻塞模式下的write有个特例，就是对方主动关闭了套接字，这个时候write调用会立即返回，并通过返回值告诉应用程序实际写入的字节数，如果再次对这样的套接字进行write操作，就会返回失败。失败是通过返回值-1来通知到应用程序的。</p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;h1 id=&quot;I-O多路复用&quot;&gt;&lt;a href=&quot;#I-O多路复用&quot; class=&quot;headerlink&quot; title=&quot;I/O多路复用&quot;&gt;&lt;/a&gt;I/O多路复用&lt;/h1&gt;&lt;p&gt;　　我们假设设计了这样一个应用程序，该程序从标准输入接收数据输入，然后通过套接字发送出去，同时，该程
+      
+    
+    </summary>
+    
+      <category term="技术积累" scheme="https://liuruijie87.github.io/categories/%E6%8A%80%E6%9C%AF%E7%A7%AF%E7%B4%AF/"/>
+    
+    
+      <category term="网络编程" scheme="https://liuruijie87.github.io/tags/%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/"/>
+    
+  </entry>
   
   <entry>
     <title>网络编程学习笔记（三）--数据传输、报文读取</title>
@@ -491,31 +516,6 @@
     
     
       <category term="操作系统" scheme="https://liuruijie87.github.io/tags/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/"/>
-    
-  </entry>
-  
-  <entry>
-    <title>effective C++（2）</title>
-    <link href="https://liuruijie87.github.io/2019/09/30/effective%20C++%EF%BC%882%EF%BC%89/"/>
-    <id>https://liuruijie87.github.io/2019/09/30/effective C++（2）/</id>
-    <published>2019-09-30T00:27:33.578Z</published>
-    <updated>2019-09-30T01:26:10.508Z</updated>
-    
-    <content type="html"><![CDATA[<p>　　1.如果你打算在一个内含引用的类内支持赋值操作，你必须自己定义拷贝赋值操作符。<br>　　2.如果某个基类将拷贝赋值操作符声明为private，编译器就会拒绝为其子类生成一个拷贝赋值操作符。<br>　　3.当子类对象经由一个基类指针被删除，而该基类带着一个非虚析构函数，则在实际执行的时候，对象的子类部分没被销毁。将基类的析构函数声明为虚函数之后，子类的析构函数也自动成为虚析构函数，在主函数中基类指针指向的是派生类对象，当delete释放指针所指向的存储空间时，会执行派生类的析构函数，派生类的析构函数执行完之后会紧接着执行基类的析构函数，以释放从基类继承过来的成员变量所消耗的资源。<br>　　4.auto_ptrs有个不寻常的性质，若通过拷贝构造或拷贝赋值运算符复制它们，它们会变成null，而复制所得的指针将取得资源的唯一拥有权。<br>　　5.应该尽量延后变量的定义，直到能够给它初值实参为止，因为这样不仅能够避免构造和析构非必要对象，还可以避免毫无意义的默认构造行为。<br>　　6.将大多数inline限制在小型、频繁调用的函数身上。<br>　　7.public继承意味着“is a”的关系，虚函数意味着接口必须被继承，非虚函数意味着接口和实现都必须被继承。<br>　　8.private继承使得基类所有成员在子类中的访问权限变为private。</p>]]></content>
-    
-    <summary type="html">
-    
-      
-      
-        &lt;p&gt;　　1.如果你打算在一个内含引用的类内支持赋值操作，你必须自己定义拷贝赋值操作符。&lt;br&gt;　　2.如果某个基类将拷贝赋值操作符声明为private，编译器就会拒绝为其子类生成一个拷贝赋值操作符。&lt;br&gt;　　3.当子类对象经由一个基类指针被删除，而该基类带着一个非虚析构函数，
-      
-    
-    </summary>
-    
-      <category term="读书笔记" scheme="https://liuruijie87.github.io/categories/%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0/"/>
-    
-    
-      <category term="effective C++" scheme="https://liuruijie87.github.io/tags/effective-C/"/>
     
   </entry>
   

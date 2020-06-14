@@ -1,0 +1,317 @@
+<!DOCTYPE html><html class="theme-next pisces use-motion" lang="zh-CN"><head><meta name="generator" content="Hexo 3.9.0"><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=2"><meta name="theme-color" content="#222"><script src="/lib/pace/pace.min.js?v=1.0.2"></script><link rel="stylesheet" href="/lib/pace/pace-theme-minimal.min.css?v=1.0.2"><link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.7.0"><link rel="stylesheet" href="/css/main.css?v=7.2.0"><link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.2.0"><link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.2.0"><link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.2.0"><link rel="mask-icon" href="/images/logo.svg?v=7.2.0" color="#222"><script id="hexo.configurations">var NexT=window.NexT||{},CONFIG={root:"/",scheme:"Pisces",version:"7.2.0",sidebar:{position:"left",display:"post",offset:12,onmobile:!1},back2top:{enable:!0,sidebar:!1,scrollpercent:!1},copycode:{enable:!1,show_result:!1,style:null},fancybox:!1,fastclick:!1,lazyload:!1,tabs:!0,motion:{enable:!0,async:!1,transition:{post_block:"fadeIn",post_header:"slideDownIn",post_body:"slideDownIn",coll_header:"slideLeftIn",sidebar:"slideUpIn"}},algolia:{applicationID:"",apiKey:"",indexName:"",hits:{per_page:10},labels:{input_placeholder:"Search for Posts",hits_empty:"We didn't find any results for the search: ${query}",hits_stats:"${hits} results found in ${time} ms"}},translation:{copy_button:"复制",copy_success:"复制成功",copy_failure:"复制失败"}}</script><meta name="description" content="I/O多路复用　　我们假设设计了这样一个应用程序，该程序从标准输入接收数据输入，然后通过套接字发送出去，同时，该程序也通过套接字接收对方发送的数据流。我们可以使用fgets方法等待标准输入，但是一旦这样做，就没有办法在套接字有数据的时候读出数据；我们也可以使用read方法等待套接字有数据返回，但是这样做，也没有办法在标准输入有数据的情况下，读入数据并发送给对方。　　I/O多路复用的设计初衷就是解决"><meta name="keywords" content="网络编程"><meta property="og:type" content="article"><meta property="og:title" content="网络编程学习笔记（四）--几种高性能方案"><meta property="og:url" content="https://liuruijie87.github.io/2020/06/14/网络编程学习笔记（四）--高性能解决方案/index.html"><meta property="og:site_name" content="liuruijie"><meta property="og:description" content="I/O多路复用　　我们假设设计了这样一个应用程序，该程序从标准输入接收数据输入，然后通过套接字发送出去，同时，该程序也通过套接字接收对方发送的数据流。我们可以使用fgets方法等待标准输入，但是一旦这样做，就没有办法在套接字有数据的时候读出数据；我们也可以使用read方法等待套接字有数据返回，但是这样做，也没有办法在标准输入有数据的情况下，读入数据并发送给对方。　　I/O多路复用的设计初衷就是解决"><meta property="og:locale" content="zh-CN"><meta property="og:updated_time" content="2020-06-14T13:23:01.805Z"><meta name="twitter:card" content="summary"><meta name="twitter:title" content="网络编程学习笔记（四）--几种高性能方案"><meta name="twitter:description" content="I/O多路复用　　我们假设设计了这样一个应用程序，该程序从标准输入接收数据输入，然后通过套接字发送出去，同时，该程序也通过套接字接收对方发送的数据流。我们可以使用fgets方法等待标准输入，但是一旦这样做，就没有办法在套接字有数据的时候读出数据；我们也可以使用read方法等待套接字有数据返回，但是这样做，也没有办法在标准输入有数据的情况下，读入数据并发送给对方。　　I/O多路复用的设计初衷就是解决"><link rel="alternate" href="/atom.xml" title="liuruijie" type="application/atom+xml"><link rel="canonical" href="https://liuruijie87.github.io/2020/06/14/网络编程学习笔记（四）--高性能解决方案/"><script id="page.configurations">CONFIG.page={sidebar:""}</script><title>网络编程学习笔记（四）--几种高性能方案 | liuruijie</title><noscript><style>.sidebar-inner,.use-motion .brand,.use-motion .collection-title,.use-motion .comments,.use-motion .menu-item,.use-motion .motion-element,.use-motion .pagination,.use-motion .post-block,.use-motion .post-body,.use-motion .post-header{opacity:initial}.use-motion .logo,.use-motion .site-subtitle,.use-motion .site-title{opacity:initial;top:initial}.use-motion .logo-line-before i{left:initial}.use-motion .logo-line-after i{right:initial}</style></noscript></head><body itemscope itemtype="http://schema.org/WebPage" lang="zh-CN"><div class="container sidebar-position-left page-post-detail"><div class="headband"></div><header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="header-inner"><div class="site-brand-wrapper"><div class="site-meta"><div class="custom-logo-site-title"><a href="/" class="brand" rel="start"><span class="logo-line-before"><i></i></span> <span class="site-title">liuruijie</span> <span class="logo-line-after"><i></i></span></a></div><p class="site-subtitle">快乐搬砖，码出未来</p></div><div class="site-nav-toggle"><button aria-label="切换导航栏"><span class="btn-bar"></span> <span class="btn-bar"></span> <span class="btn-bar"></span></button></div></div><nav class="site-nav"><ul id="menu" class="menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i><br>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="menu-item-icon fa fa-fw fa-user"></i><br>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="menu-item-icon fa fa-fw fa-tags"></i><br>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i><br>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i><br>归档</a></li><li class="menu-item menu-item-search"><a href="javascript:;" class="popup-trigger"><i class="menu-item-icon fa fa-search fa-fw"></i><br>搜索</a></li></ul><div class="site-search"><div class="popup search-popup local-search-popup"><div class="local-search-header clearfix"><span class="search-icon"><i class="fa fa-search"></i> </span><span class="popup-btn-close"><i class="fa fa-times-circle"></i></span><div class="local-search-input-wrapper"><input autocomplete="off" placeholder="搜索..." spellcheck="false" type="text" id="local-search-input"></div></div><div id="local-search-result"></div></div></div></nav></div></header><main id="main" class="main"><div class="main-inner"><div class="content-wrap"><div id="content" class="content"><div id="posts" class="posts-expand"><article class="post post-type-normal" itemscope itemtype="http://schema.org/Article"><div class="post-block"><link itemprop="mainEntityOfPage" href="https://liuruijie87.github.io/2020/06/14/网络编程学习笔记（四）--高性能解决方案/"><span hidden itemprop="author" itemscope itemtype="http://schema.org/Person"><meta itemprop="name" content="liuruijie"><meta itemprop="description" content="LiuRuijie的个人博客，记录生活，立足当下，放眼未来"><meta itemprop="image" content="/images/avatar.jpg"></span><span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization"><meta itemprop="name" content="liuruijie"></span><header class="post-header"><h1 class="post-title" itemprop="name headline">网络编程学习笔记（四）--几种高性能方案</h1><div class="post-meta"><span class="post-meta-item"><span class="post-meta-item-icon"><i class="fa fa-calendar-o"></i> </span><span class="post-meta-item-text">发表于</span> <time title="创建时间：2020-06-14 21:19:56 / 修改时间：21:23:01" itemprop="dateCreated datePublished" datetime="2020-06-14T21:19:56+08:00">2020-06-14</time> </span><span class="post-meta-item"><span class="post-meta-item-icon"><i class="fa fa-folder-o"></i> </span><span class="post-meta-item-text">分类于</span> <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/技术积累/" itemprop="url" rel="index"><span itemprop="name">技术积累</span></a></span></span><br></div></header><div class="post-body" itemprop="articleBody"><h1 id="I-O多路复用"><a href="#I-O多路复用" class="headerlink" title="I/O多路复用"></a>I/O多路复用</h1><p>　　我们假设设计了这样一个应用程序，该程序从标准输入接收数据输入，然后通过套接字发送出去，同时，该程序也通过套接字接收对方发送的数据流。我们可以使用fgets方法等待标准输入，但是一旦这样做，就没有办法在套接字有数据的时候读出数据；我们也可以使用read方法等待套接字有数据返回，但是这样做，也没有办法在标准输入有数据的情况下，读入数据并发送给对方。<br>　　I/O多路复用的设计初衷就是解决这样的场景。我们可以把标准输入、套接字等都看做I/O的一路，多路复用的意思，就是在任何一路I/O有“事件”发生的情况下，通知应用程序去处理相应的I/O事件，这样我们的程序就变成了“多面手”，在同一时刻仿佛可以处理多个I/O事件。像刚才的例子，使用I/O复用以后，如果标准输入有数据，立即从标准输入读入数据，通过套接字发送出去；如果套接字有数据可以读，立即可以读出数据。</p><h2 id="select函数"><a href="#select函数" class="headerlink" title="select函数"></a>select函数</h2><p>　　select函数就是这样一种常见的I/O多路复用技术，使用select函数，通知内核挂起进程，当一个或多个I/O事件发生后，控制权返还给应用程序，由应用程序进行I/O事件的处理。<br>select函数的使用方法<br>　　select函数的使用方法有点复杂，我们先看一下它的声明：</p><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">int select(int maxfd, fd_set *readset, fd_set *writeset, fd_set *exceptset, const struct *timeval);</span><br><span class="line">返回：若有就绪描述符则为其数目，若超时则为 0，若出错则为 -1</span><br></pre></td></tr></table></figure><p>　　在这个函数中，maxfd表示的是待测试的描述符基数，它的值是待测试的最大描述符加1。比如现在的select待测试的描述符集合是{0,1,4}，那么maxfd就是5，紧接着的是三个描述符集合，分别是读描述符集合readset、写描述符集合writeset和异常描述符集合exceptset，这三个分别通知内核，在哪些描述符上检测数据可以读，可以写和有异常发生。<br>　　那么如何设置这些描述符集合呢？以下的宏可以帮助到我们。</p><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">void FD_ZERO(fd_set *fdset); </span><br><span class="line">void FD_SET(int fd, fd_set *fdset); </span><br><span class="line">void FD_CLR(int fd, fd_set *fdset); </span><br><span class="line">int FD_ISSET(int fd, fd_set *fdset);</span><br></pre></td></tr></table></figure><p>　　如果刚入门，理解这些宏可能有些困难。我们可以这样想象，下面一个向量代表了一个描述符集合，其中，这个向量的每个元素都是二机制数中的0或者1。<br>　　a[maxfd-1], …, a[1], a[0]<br>　　我们按照这样的思路来理解这些宏：其中0代表不需要处理，1代表需要处理。实际上，很多系统是用一个整型数组来表示一个描述字集合的，一个32位的整型数可以表示32个描述字，例如第一个整型数表示0-31描述字，第二个整型数可以表示32-63描述字，以此类推。这个时候再来理解为什么描述字集合{0,1,4}，对应的maxfd是5，而不是4，就比较方便了。因为这个向量对应的是这样的：a[4],a[3],a[2],a[1],a[0]。待测试的描述符个数显然是5，而不是4。<br>　　三个描述符集合中的每一个都可以设置成空，这样就表示不需要内核进行相关的检测。最后一个参数是timeval结构体时间：</p><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">struct timeval </span><br><span class="line">&#123; </span><br><span class="line">	long tv_sec; /* seconds */ </span><br><span class="line">	long tv_usec; /* microseconds */ </span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure><p>　　这个参数设置成不同的值，会有不同的可能：第一个可能是设置成空(NULL)，表示如果没有I/O事件发生，则select一直等待下去。第二个可能是设置一个非零的值，这个表示等待固定的一段时间后从select阻塞调用中返回。第三个可能是将tv_sec和tv_usec都设置成0，表示根本不等待，检测完毕立即返回。这种情况使用得比较少。<br>　　select函数检测套接字可读有以下几种情况：第一种情况是套接字接收缓冲区有数据可以读，如果我们使用read函数去执行读操作，肯定不会被阻塞，而是会直接读到这部分数据。第二种情况是对方发送了FIN，使用read函数执行读操作，不会被阻塞，直接返回0。第三种情况是针对一个监听套接字而言的，有已经完成的连接建立，此时使用accept函数去执行不会阻塞，直接返回已经完成的连接。第四种情况是套接字有错误待处理，使用read函数去执行读操作，不阻塞，且返回-1。总结成一句话就是，内核通知我们套接字有数据可以读了，使用read函数不会阻塞。<br>　　select检测套接字可写，完全是基于套接字本身的特性来说的，具体来说有以下几种情况。第一种是套接字发送缓冲区足够大，如果我们使用非阻塞套接字进行write操作，将不会被阻塞，直接返回。第二种是连接的写半边已经关闭，如果继续进行写操作将会产生SIGPIPE信号。第三种是套接字上有错误待处理，使用write函数去执行写操作，不阻塞，且返回 -1。总结成一句话就是，内核通知我们套接字可以往里写了，使用write函数就不会阻塞。</p><h2 id="poll：另一种I-O多路复用"><a href="#poll：另一种I-O多路复用" class="headerlink" title="poll：另一种I/O多路复用"></a>poll：另一种I/O多路复用</h2><p>　　select方法是多个UNIX平台支持的非常常见的I/O多路复用技术，它通过描述符集合来表示检测的I/O对象，通过三个不同的描述符集合来描述I/O事件：可读、可写和异常。但是select有一个缺点，那就是所支持的文件描述符的个数是有限的。在Linux系统中，select的默认最大值为1024。<br>　　poll是除了select之外，另一种普遍使用的I/O多路复用技术，和select相比，它和内核交互的数据结构有所变化，另外，也突破了文件描述符的个数限制。下面是poll函数的原型：</p><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">int poll(struct pollfd *fds, unsigned long nfds, int timeout);</span><br><span class="line">返回值：若有就绪描述符则为其数目，若超时则为 0，若出错则为 -1</span><br></pre></td></tr></table></figure><p>　　这个函数里面输入了三个参数，第一个参数是一个pollfd的数组。其中pollfd的结构如下：</p><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">struct pollfd </span><br><span class="line">&#123; </span><br><span class="line">	int fd; /* file descriptor */ </span><br><span class="line">	short events; /* events to look for */ </span><br><span class="line">	short revents; /* events returned */ </span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure><p>　　这个结构体由三个部分组成，首先是描述符fd，然后是描述符上待检测的事件类型events，注意这里的events可以表示多个不同的事件，具体的实现可以通过使用二进制掩码位操作来完成，例如，POLLIN和POLLOUT可以表示读和写事件。</p><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">#define POLLIN 0x0001 /* any readable data available */ </span><br><span class="line">#define POLLPRI 0x0002 /* OOB/Urgent readable data */ </span><br><span class="line">#define POLLOUT 0x0004 /* file descriptor is writeable */</span><br></pre></td></tr></table></figure><p>　　和select非常不同的地方在于，poll每次检测之后的结果不会修改原来的传入值，而是将结果保留在revents字段中，这样就不需要每次检测完都得重置待检测的描述字和感兴趣的事件。我们可以把revents理解成“returned events”。<br>　　events类型的事件可以分为两大类。第一类是可读事件，有以下几种：</p><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">#define POLLIN 0x0001 /* any readable data available */ </span><br><span class="line">#define POLLPRI 0x0002 /* OOB/Urgent readable data */ </span><br><span class="line">#define POLLRDNORM 0x0040 /* non-OOB/URG data available */ </span><br><span class="line">#define POLLRDBAND 0x0080 /* OOB/Urgent readable data */</span><br></pre></td></tr></table></figure><p>　　一般我们在程序里面有POLLIN即可。套接字可读事件和select的readset基本一致，是系统内核通知应用程序有数据可以读，通过read函数执行操作不会被阻塞。<br>　　第二类是可写事件，有以下几种：</p><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">#define POLLOUT 0x0004 /* file descriptor is writeable */ </span><br><span class="line">#define POLLWRNORM POLLOUT /* no write type differentiation */ </span><br><span class="line">#define POLLWRBAND 0x0100 /* OOB/Urgent data can be written */</span><br></pre></td></tr></table></figure><p>　　一般我们在程序里面统一使用POLLOUT。套接字可写事件和select的writeset基本一致，是系统内核通知套接字缓冲区已准备好，通过write函数执行写操作不会被阻塞。以上两大类的事件都可以在“returned events”得到复用。还有另一大类事件，没有办法通过poll向系统内核递交检测请求，只能通过“returned events”来加以检测，这类事件是各种错误事件。</p><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">#define POLLERR 0x0008 /* 一些错误发送 */ </span><br><span class="line">#define POLLHUP 0x0010 /* 描述符挂起 */ </span><br><span class="line">#define POLLNVAL 0x0020 /* 请求的事件无效 */</span><br></pre></td></tr></table></figure><p>　　我们再回过头看一下poll函数的原型。参数nfds描述的是数组fds的大小，简单说，就是向poll申请的事件检测的个数。最后一个参数timeout，描述了poll的行为。如果是一个小于0的数，表示在有事件发生之前永远等待；如果是0，表示不阻塞进程，立即返回；如果是一个大于0的数，表示poll调用方等待指定的毫秒数后返回。关于返回值，当有错误发生时，poll函数的返回值为-1；如果在指定的时间到达之前没有任何事件发生，则返回0，否则就返回检测到的事件个数，也就是“returned events”中非0的描述符个数。<br>　　poll函数有一点非常好，如果我们不想对某个pollfd结构进行事件检测，可以把它对应的pollfd结构的fd成员设置成一个负值。这样，poll函数将忽略这样的events事件，检测完成以后，所对应的“returned events”的成员值也将设置为0。和select函数对比一下，我们发现poll函数和select不一样的地方就是，在select里面，文件描述符的个数已经随着fd_set的实现而固定，没有办法对此进行配置；而在poll函数里，我们可以控制pollfd结构的数组大小，这意味着我们可以突破原来select函数最大描述符的限制，在这种情况下，应用程序调用者需要分配pollfd数组并通知poll函数该数组的大小。<br>　　poll是另一种在各种UNIX系统上被广泛支持的I/O多路复用技术，虽然名声没有select那么响，能力一点不比select差，而且因为可以突破select文件描述符的个数限制，在高并发的场景下尤其占优势。</p><h1 id="非阻塞I-O"><a href="#非阻塞I-O" class="headerlink" title="非阻塞I/O"></a>非阻塞I/O</h1><p>　　当应用程序调用阻塞I/O完成某个操作时，应用程序会被挂起，等待内核完成操作，感觉应用程序像是被“阻塞”了一样。实际上，内核所做的事情是将CPU时间切换给其他有需要的进程，网络应用程序在这种情况下就会得不到CPU时间做该做的事情。非阻塞I/O则不然，当应用程序调用非阻塞I/O完成某个操作时，内核立即返回，不会把CPU时间切换给其他进程，应用程序在返回后，可以得到足够的CPU时间继续完成其他事情。</p><h2 id="非阻塞I-O读操作"><a href="#非阻塞I-O读操作" class="headerlink" title="非阻塞I/O读操作"></a>非阻塞I/O读操作</h2><p>　　如果套接字对应的接收缓冲区没有数据可读，在非阻塞情况下read调用会立即返回，一般返回EWOULDBLOCK或EAGAIN出错信息。在这种情况下，出错信息是需要小心处理，比如后面再次调用read操作，而不是直接作为错误直接返回。这就好像去书店买书没买到离开一样，需要不断进行又一次轮询处理。</p><h2 id="非阻塞I-O写操作"><a href="#非阻塞I-O写操作" class="headerlink" title="非阻塞I/O写操作"></a>非阻塞I/O写操作</h2><p>　　在阻塞I/O情况下，write函数返回的字节数，和输入的参数总是一样的。而在非阻塞I/O的情况下，如果套接字的发送缓冲区已达到了极限，不能容纳更多的字节，那么操作系统内核会尽最大可能从应用程序拷贝数据到发送缓冲区中，并立即从write等函数调用中返回。可想而知，在拷贝动作发生的瞬间，有可能一个字符也没拷贝，有可能所有请求字符都被拷贝完成，那么这个时候就需要返回一个数值，告诉应用程序到底有多少数据被成功拷贝到了发送缓冲区中，应用程序需要再次调用write函数，以输出未完成拷贝的字节。<br>　　write等函数是可以同时作用到阻塞I/O和非阻塞I/O上的，为了复用一个函数，处理非阻塞和阻塞I/O多种情况，设计出了写入返回值，并用这个返回值表示实际写入的数据大小。也就是说，非阻塞I/O和阻塞I/O处理的方式是不一样的。非阻塞I/O需要这样：拷贝→返回→再拷贝→再返回。而阻塞I/O需要这样：拷贝→直到所有数据拷贝至发送缓冲区完成→返回。不过在实战中，可以不用区别阻塞和非阻塞I/O，使用循环的方式来写入数据就好了。只不过在阻塞I/O的情况下，循环只执行一次就结束了。<br>　　下面通过一张表来总结一下read和write在阻塞模式和非阻塞模式下的不同行为特性：</p><p>　　关于read和write还有几个结论:<br>　　1.read总是在接收缓冲区有数据时就立即返回，不是等到应用程序给定的数据充满才返回。当接收缓冲区为空时，阻塞模式会等待，非阻塞模式立即返回-1，并有EWOULDBLOCK或EAGAIN错误。<br>　　2.和read不同，阻塞模式下，write只有在发送缓冲区足以容纳应用程序的输出字节时才返回；而非阻塞模式下，则是能写入多少就写入多少，并返回实际写入的字节数。<br>　　3.阻塞模式下的write有个特例，就是对方主动关闭了套接字，这个时候write调用会立即返回，并通过返回值告诉应用程序实际写入的字节数，如果再次对这样的套接字进行write操作，就会返回失败。失败是通过返回值-1来通知到应用程序的。</p></div><footer class="post-footer"><div class="post-tags"><a href="/tags/网络编程/" rel="tag"># 网络编程</a></div><div class="post-nav"><div class="post-nav-next post-nav-item"><a href="/2020/06/01/网络编程学习笔记（三）--数据传输、报文读取/" rel="next" title="网络编程学习笔记（三）--数据传输、报文读取"><i class="fa fa-chevron-left"></i> 网络编程学习笔记（三）--数据传输、报文读取</a></div><span class="post-nav-divider"></span><div class="post-nav-prev post-nav-item"></div></div></footer></div></article></div></div></div><div class="sidebar-toggle"><div class="sidebar-toggle-line-wrap"><span class="sidebar-toggle-line sidebar-toggle-line-first"></span> <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span> <span class="sidebar-toggle-line sidebar-toggle-line-last"></span></div></div><aside id="sidebar" class="sidebar"><div class="sidebar-inner"><ul class="sidebar-nav motion-element"><li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">文章目录</li><li class="sidebar-nav-overview" data-target="site-overview-wrap">站点概览</li></ul><div class="site-overview-wrap sidebar-panel"><div class="site-overview"><div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person"><img class="site-author-image" itemprop="image" src="/images/avatar.jpg" alt="liuruijie"><p class="site-author-name" itemprop="name">liuruijie</p><div class="site-description motion-element" itemprop="description">LiuRuijie的个人博客，记录生活，立足当下，放眼未来</div></div><nav class="site-state motion-element"><div class="site-state-item site-state-posts"><a href="/archives/"><span class="site-state-item-count">34</span> <span class="site-state-item-name">日志</span></a></div><div class="site-state-item site-state-categories"><a href="/categories/"><span class="site-state-item-count">6</span> <span class="site-state-item-name">分类</span></a></div><div class="site-state-item site-state-tags"><a href="/tags/"><span class="site-state-item-count">17</span> <span class="site-state-item-name">标签</span></a></div></nav><div class="feed-link motion-element"><a href="/atom.xml" rel="alternate"><i class="fa fa-rss"></i> RSS</a></div><div class="links-of-author motion-element"><span class="links-of-author-item"><a href="https://github.com/liuruijie87" title="GitHub &rarr; https://github.com/liuruijie87" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a> </span><span class="links-of-author-item"><a href="mailto:1518528294@qq.com" title="E-Mail &rarr; mailto:1518528294@qq.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a> </span><span class="links-of-author-item"><a href="https://weibo.com/GLHRJ" title="Weibo &rarr; https://weibo.com/GLHRJ" rel="noopener" target="_blank"><i class="fa fa-fw fa-weibo"></i>Weibo</a> </span><span class="links-of-author-item"><a href="https://plus.google.com/yourname" title="Google &rarr; https://plus.google.com/yourname" rel="noopener" target="_blank"><i class="fa fa-fw fa-google"></i>Google</a></span></div></div></div><div class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active"><div class="post-toc"><div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#I-O多路复用"><span class="nav-number">1.</span> <span class="nav-text">I/O多路复用</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#select函数"><span class="nav-number">1.1.</span> <span class="nav-text">select函数</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#poll：另一种I-O多路复用"><span class="nav-number">1.2.</span> <span class="nav-text">poll：另一种I/O多路复用</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#非阻塞I-O"><span class="nav-number">2.</span> <span class="nav-text">非阻塞I/O</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#非阻塞I-O读操作"><span class="nav-number">2.1.</span> <span class="nav-text">非阻塞I/O读操作</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#非阻塞I-O写操作"><span class="nav-number">2.2.</span> <span class="nav-text">非阻塞I/O写操作</span></a></li></ol></li></ol></div></div></div></div></aside><div id="sidebar-dimmer"></div></div></main><footer id="footer" class="footer"><div class="footer-inner">&copy; <span itemprop="copyrightYear">2020</span> <span class="with-love" id="animate"><i class="fa fa-user"></i> </span><span class="author" itemprop="copyrightHolder">liuruijie</span></div><span class="post-meta-divider">|</span></footer></div><div class="back-to-top"><i class="fa fa-arrow-up"></i></div><script>"[object Function]"!==Object.prototype.toString.call(window.Promise)&&(window.Promise=null)</script><script color="0,0,255" opacity="0.5" zindex="-1" count="99" src="/lib/canvas-nest/canvas-nest.min.js"></script><script src="/lib/jquery/index.js?v=3.4.1"></script><script src="/lib/velocity/velocity.min.js?v=1.2.1"></script><script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script><script src="/js/utils.js?v=7.2.0"></script><script src="/js/motion.js?v=7.2.0"></script><script src="/js/affix.js?v=7.2.0"></script><script src="/js/schemes/pisces.js?v=7.2.0"></script><script src="/js/scrollspy.js?v=7.2.0"></script><script src="/js/post-details.js?v=7.2.0"></script><script src="/js/next-boot.js?v=7.2.0"></script><script>// Popup Window;
+    var isfetched = false;
+    var isXml = true;
+    // Search DB path;
+    var search_path = "search.xml";
+    if (search_path.length === 0) {
+      search_path = "search.xml";
+    } else if (/json$/i.test(search_path)) {
+      isXml = false;
+    }
+    var path = "/" + search_path;
+    // monitor main search box;
+
+    var onPopupClose = function (e) {
+      $('.popup').hide();
+      $('#local-search-input').val('');
+      $('.search-result-list').remove();
+      $('#no-result').remove();
+      $(".local-search-pop-overlay").remove();
+      $('body').css('overflow', '');
+    }
+
+    function proceedsearch() {
+      $("body")
+        .append('<div class="search-popup-overlay local-search-pop-overlay"></div>')
+        .css('overflow', 'hidden');
+      $('.search-popup-overlay').click(onPopupClose);
+      $('.popup').toggle();
+      var $localSearchInput = $('#local-search-input');
+      $localSearchInput.attr("autocapitalize", "none");
+      $localSearchInput.attr("autocorrect", "off");
+      $localSearchInput.focus();
+    }
+
+    // search function;
+    var searchFunc = function(path, search_id, content_id) {
+      'use strict';
+
+      // start loading animation
+      $("body")
+        .append('<div class="search-popup-overlay local-search-pop-overlay">' +
+          '<div id="search-loading-icon">' +
+          '<i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>' +
+          '</div>' +
+          '</div>')
+        .css('overflow', 'hidden');
+      $("#search-loading-icon").css('margin', '20% auto 0 auto').css('text-align', 'center');
+
+      
+
+      $.ajax({
+        url: path,
+        dataType: isXml ? "xml" : "json",
+        async: true,
+        success: function(res) {
+          // get the contents from search data
+          isfetched = true;
+          $('.popup').detach().appendTo('.header-inner');
+          var datas = isXml ? $("entry", res).map(function() {
+            return {
+              title: $("title", this).text(),
+              content: $("content",this).text(),
+              url: $("url" , this).text()
+            };
+          }).get() : res;
+          var input = document.getElementById(search_id);
+          var resultContent = document.getElementById(content_id);
+          var inputEventFunction = function() {
+            var searchText = input.value.trim().toLowerCase();
+            var keywords = searchText.split(/[\s\-]+/);
+            if (keywords.length > 1) {
+              keywords.push(searchText);
+            }
+            var resultItems = [];
+            if (searchText.length > 0) {
+              // perform local searching
+              datas.forEach(function(data) {
+                var isMatch = false;
+                var hitCount = 0;
+                var searchTextCount = 0;
+                var title = data.title.trim();
+                var titleInLowerCase = title.toLowerCase();
+                var content = data.content.trim().replace(/<[^>]+>/g,"");
+                
+                var contentInLowerCase = content.toLowerCase();
+                var articleUrl = decodeURIComponent(data.url).replace(/\/{2,}/g, '/');
+                var indexOfTitle = [];
+                var indexOfContent = [];
+                // only match articles with not empty titles
+                if(title != '') {
+                  keywords.forEach(function(keyword) {
+                    function getIndexByWord(word, text, caseSensitive) {
+                      var wordLen = word.length;
+                      if (wordLen === 0) {
+                        return [];
+                      }
+                      var startPosition = 0, position = [], index = [];
+                      if (!caseSensitive) {
+                        text = text.toLowerCase();
+                        word = word.toLowerCase();
+                      }
+                      while ((position = text.indexOf(word, startPosition)) > -1) {
+                        index.push({position: position, word: word});
+                        startPosition = position + wordLen;
+                      }
+                      return index;
+                    }
+
+                    indexOfTitle = indexOfTitle.concat(getIndexByWord(keyword, titleInLowerCase, false));
+                    indexOfContent = indexOfContent.concat(getIndexByWord(keyword, contentInLowerCase, false));
+                  });
+                  if (indexOfTitle.length > 0 || indexOfContent.length > 0) {
+                    isMatch = true;
+                    hitCount = indexOfTitle.length + indexOfContent.length;
+                  }
+                }
+
+                // show search results
+
+                if (isMatch) {
+                  // sort index by position of keyword
+
+                  [indexOfTitle, indexOfContent].forEach(function (index) {
+                    index.sort(function (itemLeft, itemRight) {
+                      if (itemRight.position !== itemLeft.position) {
+                        return itemRight.position - itemLeft.position;
+                      } else {
+                        return itemLeft.word.length - itemRight.word.length;
+                      }
+                    });
+                  });
+
+                  // merge hits into slices
+
+                  function mergeIntoSlice(text, start, end, index) {
+                    var item = index[index.length - 1];
+                    var position = item.position;
+                    var word = item.word;
+                    var hits = [];
+                    var searchTextCountInSlice = 0;
+                    while (position + word.length <= end && index.length != 0) {
+                      if (word === searchText) {
+                        searchTextCountInSlice++;
+                      }
+                      hits.push({position: position, length: word.length});
+                      var wordEnd = position + word.length;
+
+                      // move to next position of hit
+
+                      index.pop();
+                      while (index.length != 0) {
+                        item = index[index.length - 1];
+                        position = item.position;
+                        word = item.word;
+                        if (wordEnd > position) {
+                          index.pop();
+                        } else {
+                          break;
+                        }
+                      }
+                    }
+                    searchTextCount += searchTextCountInSlice;
+                    return {
+                      hits: hits,
+                      start: start,
+                      end: end,
+                      searchTextCount: searchTextCountInSlice
+                    };
+                  }
+
+                  var slicesOfTitle = [];
+                  if (indexOfTitle.length != 0) {
+                    slicesOfTitle.push(mergeIntoSlice(title, 0, title.length, indexOfTitle));
+                  }
+
+                  var slicesOfContent = [];
+                  while (indexOfContent.length != 0) {
+                    var item = indexOfContent[indexOfContent.length - 1];
+                    var position = item.position;
+                    var word = item.word;
+                    // cut out 100 characters
+                    var start = position - 20;
+                    var end = position + 80;
+                    if(start < 0){
+                      start = 0;
+                    }
+                    if (end < position + word.length) {
+                      end = position + word.length;
+                    }
+                    if(end > content.length){
+                      end = content.length;
+                    }
+                    slicesOfContent.push(mergeIntoSlice(content, start, end, indexOfContent));
+                  }
+
+                  // sort slices in content by search text's count and hits' count
+
+                  slicesOfContent.sort(function (sliceLeft, sliceRight) {
+                    if (sliceLeft.searchTextCount !== sliceRight.searchTextCount) {
+                      return sliceRight.searchTextCount - sliceLeft.searchTextCount;
+                    } else if (sliceLeft.hits.length !== sliceRight.hits.length) {
+                      return sliceRight.hits.length - sliceLeft.hits.length;
+                    } else {
+                      return sliceLeft.start - sliceRight.start;
+                    }
+                  });
+
+                  // select top N slices in content
+
+                  var upperBound = parseInt('1');
+                  if (upperBound >= 0) {
+                    slicesOfContent = slicesOfContent.slice(0, upperBound);
+                  }
+
+                  // highlight title and content
+
+                  function highlightKeyword(text, slice) {
+                    var result = '';
+                    var prevEnd = slice.start;
+                    slice.hits.forEach(function (hit) {
+                      result += text.substring(prevEnd, hit.position);
+                      var end = hit.position + hit.length;
+                      result += '<b class="search-keyword">' + text.substring(hit.position, end) + '</b>';
+                      prevEnd = end;
+                    });
+                    result += text.substring(prevEnd, slice.end);
+                    return result;
+                  }
+
+                  var resultItem = '';
+
+                  if (slicesOfTitle.length != 0) {
+                    resultItem += "<li><a href='" + articleUrl + "' class='search-result-title'>" + highlightKeyword(title, slicesOfTitle[0]) + "</a>";
+                  } else {
+                    resultItem += "<li><a href='" + articleUrl + "' class='search-result-title'>" + title + "</a>";
+                  }
+
+                  slicesOfContent.forEach(function (slice) {
+                    resultItem += "<a href='" + articleUrl + "'>" +
+                      "<p class=\"search-result\">" + highlightKeyword(content, slice) +
+                      "...</p>" + "</a>";
+                  });
+
+                  resultItem += "</li>";
+                  resultItems.push({
+                    item: resultItem,
+                    searchTextCount: searchTextCount,
+                    hitCount: hitCount,
+                    id: resultItems.length
+                  });
+                }
+              })
+            };
+            if (keywords.length === 1 && keywords[0] === "") {
+              resultContent.innerHTML = '<div id="no-result"><i class="fa fa-search fa-5x"></i></div>'
+            } else if (resultItems.length === 0) {
+              resultContent.innerHTML = '<div id="no-result"><i class="fa fa-frown-o fa-5x"></i></div>'
+            } else {
+              resultItems.sort(function (resultLeft, resultRight) {
+                if (resultLeft.searchTextCount !== resultRight.searchTextCount) {
+                  return resultRight.searchTextCount - resultLeft.searchTextCount;
+                } else if (resultLeft.hitCount !== resultRight.hitCount) {
+                  return resultRight.hitCount - resultLeft.hitCount;
+                } else {
+                  return resultRight.id - resultLeft.id;
+                }
+              });
+              var searchResultList = '<ul class=\"search-result-list\">';
+              resultItems.forEach(function (result) {
+                searchResultList += result.item;
+              })
+              searchResultList += "</ul>";
+              resultContent.innerHTML = searchResultList;
+            }
+          }
+
+          if ('auto' === 'auto') {
+            input.addEventListener('input', inputEventFunction);
+          } else {
+            $('.search-icon').click(inputEventFunction);
+            input.addEventListener('keypress', function (event) {
+              if (event.keyCode === 13) {
+                inputEventFunction();
+              }
+            });
+          }
+
+          // remove loading animation
+          $(".local-search-pop-overlay").remove();
+          $('body').css('overflow', '');
+
+          proceedsearch();
+        }
+      });
+    }
+
+    // handle and trigger popup window;
+    $('.popup-trigger').click(function(e) {
+      e.stopPropagation();
+      if (isfetched === false) {
+        searchFunc(path, 'local-search-input', 'local-search-result');
+      } else {
+        proceedsearch();
+      };
+    });
+
+    $('.popup-btn-close').click(onPopupClose);
+    $('.popup').click(function(e){
+      e.stopPropagation();
+    });
+    $(document).on('keyup', function (event) {
+      var shouldDismissSearchPopup = event.which === 27 &&
+        $('.search-popup').is(':visible');
+      if (shouldDismissSearchPopup) {
+        onPopupClose();
+      }
+    });</script></body></html>
