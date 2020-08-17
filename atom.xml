@@ -6,7 +6,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="https://liuruijie87.github.io/"/>
-  <updated>2020-08-17T08:24:24.708Z</updated>
+  <updated>2020-08-17T08:41:43.206Z</updated>
   <id>https://liuruijie87.github.io/</id>
   
   <author>
@@ -17,19 +17,20 @@
   <generator uri="http://hexo.io/">Hexo</generator>
   
   <entry>
-    <title>线程的五种状态（生命周期）</title>
+    <title>进程和线程的五种状态（生命周期）</title>
     <link href="https://liuruijie87.github.io/2020/08/17/%E7%BA%BF%E7%A8%8B%E7%9A%84%E4%BA%94%E7%A7%8D%E7%8A%B6%E6%80%81%EF%BC%88%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F%EF%BC%89/"/>
     <id>https://liuruijie87.github.io/2020/08/17/线程的五种状态（生命周期）/</id>
     <published>2020-08-17T08:16:08.510Z</published>
-    <updated>2020-08-17T08:24:24.708Z</updated>
+    <updated>2020-08-17T08:41:43.206Z</updated>
     
-    <content type="html"><![CDATA[<p>　　线程在创建到销毁的过程中，总共经历五种状态的转换，分别是：新建、就绪、运行、阻塞、死亡。具体如下：<br>新建：创建线程对象<br>就绪：线程对象已经启动了,但是还没有获取到cpu的执行权<br>运行：获取到了cpu的执行权<br>阻塞：没有cpu的执行权,回到就绪<br>死亡：代码运行完毕,线程消亡　</p><img src="/2020/08/17/线程的五种状态（生命周期）/1_线程状态图.png">]]></content>
+    <content type="html"><![CDATA[<p>　　进程和线程在创建到销毁的过程中，都会经历五种状态的转换。具体如下：</p><h1 id="进程"><a href="#进程" class="headerlink" title="进程"></a>进程</h1><p>　　创建：进程在创建时需要申请一个空白PCB，向其中填写控制和管理进程的信息，完成资源分配。如果创建工作无法完成，比如资源无法满足，就无法被调度运行，把此时进程所处状态称为创建状态。<br>　　就绪：进程已经准备好，已分配到所需资源，只要分配到CPU就能够立即运行。<br>　　执行：进程处于就绪状态被调度后，进程进入执行状态。<br>　　阻塞：正在执行的进程由于某些事件（I/O请求，申请缓存区失败）而暂时无法运行，进程受到阻塞。在满足请求时进入就绪状态等待系统调用<br>　　终止：进程结束，或出现错误，或被系统终止，进入终止状态。无法再执行</p><img src="/2020/08/17/线程的五种状态（生命周期）/1_进程状态图.png"><h1 id="线程"><a href="#线程" class="headerlink" title="线程"></a>线程</h1><p>　　新建：创建线程对象<br>　　就绪：线程对象已经启动了,但是还没有获取到cpu的执行权<br>　　运行：获取到了cpu的执行权<br>　　阻塞：没有cpu的执行权,回到就绪<br>　　死亡：代码运行完毕,线程消亡　</p><img src="/2020/08/17/线程的五种状态（生命周期）/2_线程状态图.png"><p>　　可以看出，进程和线程的状态转换基本是一样的。</p>]]></content>
     
     <summary type="html">
     
       
       
-        &lt;p&gt;　　线程在创建到销毁的过程中，总共经历五种状态的转换，分别是：新建、就绪、运行、阻塞、死亡。具体如下：&lt;br&gt;新建：创建线程对象&lt;br&gt;就绪：线程对象已经启动了,但是还没有获取到cpu的执行权&lt;br&gt;运行：获取到了cpu的执行权&lt;br&gt;阻塞：没有cpu的执行权,回到就绪&lt;b
+        &lt;p&gt;　　进程和线程在创建到销毁的过程中，都会经历五种状态的转换。具体如下：&lt;/p&gt;
+&lt;h1 id=&quot;进程&quot;&gt;&lt;a href=&quot;#进程&quot; class=&quot;headerlink&quot; title=&quot;进程&quot;&gt;&lt;/a&gt;进程&lt;/h1&gt;&lt;p&gt;　　创建：进程在创建时需要申请一个空白PCB，向其中填
       
     
     </summary>
@@ -37,7 +38,7 @@
       <category term="Linux" scheme="https://liuruijie87.github.io/categories/Linux/"/>
     
     
-      <category term="线程" scheme="https://liuruijie87.github.io/tags/%E7%BA%BF%E7%A8%8B/"/>
+      <category term="进程和线程" scheme="https://liuruijie87.github.io/tags/%E8%BF%9B%E7%A8%8B%E5%92%8C%E7%BA%BF%E7%A8%8B/"/>
     
   </entry>
   
