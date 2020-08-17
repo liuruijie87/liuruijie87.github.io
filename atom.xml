@@ -6,7 +6,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="https://liuruijie87.github.io/"/>
-  <updated>2020-07-18T08:58:44.152Z</updated>
+  <updated>2020-08-17T08:24:24.708Z</updated>
   <id>https://liuruijie87.github.io/</id>
   
   <author>
@@ -15,6 +15,31 @@
   </author>
   
   <generator uri="http://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>线程的五种状态（生命周期）</title>
+    <link href="https://liuruijie87.github.io/2020/08/17/%E7%BA%BF%E7%A8%8B%E7%9A%84%E4%BA%94%E7%A7%8D%E7%8A%B6%E6%80%81%EF%BC%88%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F%EF%BC%89/"/>
+    <id>https://liuruijie87.github.io/2020/08/17/线程的五种状态（生命周期）/</id>
+    <published>2020-08-17T08:16:08.510Z</published>
+    <updated>2020-08-17T08:24:24.708Z</updated>
+    
+    <content type="html"><![CDATA[<p>　　线程在创建到销毁的过程中，总共经历五种状态的转换，分别是：新建、就绪、运行、阻塞、死亡。具体如下：<br>新建：创建线程对象<br>就绪：线程对象已经启动了,但是还没有获取到cpu的执行权<br>运行：获取到了cpu的执行权<br>阻塞：没有cpu的执行权,回到就绪<br>死亡：代码运行完毕,线程消亡　</p><img src="/2020/08/17/线程的五种状态（生命周期）/1_线程状态图.png">]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;p&gt;　　线程在创建到销毁的过程中，总共经历五种状态的转换，分别是：新建、就绪、运行、阻塞、死亡。具体如下：&lt;br&gt;新建：创建线程对象&lt;br&gt;就绪：线程对象已经启动了,但是还没有获取到cpu的执行权&lt;br&gt;运行：获取到了cpu的执行权&lt;br&gt;阻塞：没有cpu的执行权,回到就绪&lt;b
+      
+    
+    </summary>
+    
+      <category term="Linux" scheme="https://liuruijie87.github.io/categories/Linux/"/>
+    
+    
+      <category term="线程" scheme="https://liuruijie87.github.io/tags/%E7%BA%BF%E7%A8%8B/"/>
+    
+  </entry>
   
   <entry>
     <title>malloc底层实现原理</title>
@@ -491,31 +516,6 @@
     
     
       <category term="算法" scheme="https://liuruijie87.github.io/tags/%E7%AE%97%E6%B3%95/"/>
-    
-  </entry>
-  
-  <entry>
-    <title>数据结构知识点</title>
-    <link href="https://liuruijie87.github.io/2019/12/10/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E7%9F%A5%E8%AF%86%E7%82%B9/"/>
-    <id>https://liuruijie87.github.io/2019/12/10/数据结构知识点/</id>
-    <published>2019-12-10T02:29:22.283Z</published>
-    <updated>2020-01-13T13:23:34.375Z</updated>
-    
-    <content type="html"><![CDATA[<h1 id="树"><a href="#树" class="headerlink" title="树"></a>树</h1><p>　　1、一个节点所拥有子树的个数被称为它的度。度为0的节点被称为叶节点。树的度等于树中所有节点的度的最大值。<br>　　2、一个节点的层次通过令根节点位于第一层来定义（有些书中将根节点的层次定义为0）。如果一个节点位于层次n，那么它的孩子位于层次n+1。树的高度或深度定义为树中节点的最大层次。<br>　　3、位于二叉树第i层的节点个数最多为2^(i-1),i&gt;=1。深度为k的二叉树的最大节点个数为2^k-1，k&gt;=1。<br>　　4、二叉树的遍历分为前序、中序、后序遍历，例如前序遍历是指：在遍历某一节点的左右子树之前先访问该节点。中序和后序与此类似。<br>　　5、二叉搜索树（BST）的节点放置规则：任何节点的键值一定大于其左子树中的每一个节点的键值，并小于其右子树中的每一个节点的键值。因此，从根节点一直往左走，直到无左路可走，即得最小元素，从根节点一直往右走，直到无右路可走，即得最大元素。</p>]]></content>
-    
-    <summary type="html">
-    
-      
-      
-        &lt;h1 id=&quot;树&quot;&gt;&lt;a href=&quot;#树&quot; class=&quot;headerlink&quot; title=&quot;树&quot;&gt;&lt;/a&gt;树&lt;/h1&gt;&lt;p&gt;　　1、一个节点所拥有子树的个数被称为它的度。度为0的节点被称为叶节点。树的度等于树中所有节点的度的最大值。&lt;br&gt;　　2、一个节点的层次通过令根节
-      
-    
-    </summary>
-    
-      <category term="技术积累" scheme="https://liuruijie87.github.io/categories/%E6%8A%80%E6%9C%AF%E7%A7%AF%E7%B4%AF/"/>
-    
-    
-      <category term="数据结构" scheme="https://liuruijie87.github.io/tags/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/"/>
     
   </entry>
   
