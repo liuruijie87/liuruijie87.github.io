@@ -6,7 +6,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="https://liuruijie87.github.io/"/>
-  <updated>2020-08-17T08:41:43.206Z</updated>
+  <updated>2020-08-26T13:20:19.032Z</updated>
   <id>https://liuruijie87.github.io/</id>
   
   <author>
@@ -15,6 +15,31 @@
   </author>
   
   <generator uri="http://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>TIME_WAIT和CLOSE_WAIT状态解析</title>
+    <link href="https://liuruijie87.github.io/2020/08/26/TIME_WAIT%E5%92%8CCLOSE_WAIT/"/>
+    <id>https://liuruijie87.github.io/2020/08/26/TIME_WAIT和CLOSE_WAIT/</id>
+    <published>2020-08-26T12:31:47.200Z</published>
+    <updated>2020-08-26T13:20:19.032Z</updated>
+    
+    <content type="html"><![CDATA[<h1 id="什么是TIME-WAIT和CLOSE-WAIT"><a href="#什么是TIME-WAIT和CLOSE-WAIT" class="headerlink" title="什么是TIME-WAIT和CLOSE-WAIT ?"></a>什么是TIME-WAIT和CLOSE-WAIT ?</h1><p>　　众所周知，由于socket是全双工的工作模式，一个socket的关闭，是需要四次握手来完成的:<br>　　1)主动关闭连接的一方，调用close()；协议层发送FIN包 ;<br>　　2)被动关闭的一方收到FIN包后，协议层回复ACK；然后被动关闭的一方，进入CLOSE_WAIT状态，主动关闭的一方等待对方关闭，则进入FIN_WAIT_2状态；此时，主动关闭的一方等待被动关闭一方的应用程序，调用close操作 ;<br>　　3)被动关闭的一方在完成所有数据发送后，调用close()操作；此时，协议层发送FIN包给主动关闭的一方，等待对方的ACK，被动关闭的一方进入LAST_ACK状态；<br>　　4)主动关闭的一方收到FIN包，协议层回复ACK；此时，主动关闭连接的一方，进入TIME_WAIT状态；而被动关闭的一方，进入CLOSED状态 ;<br>　　5)等待2MSL时间，主动关闭的一方，结束TIME_WAIT，进入CLOSED状态 ;<br>　　通过上面的一次socket关闭操作，可以得出以下几点：<br>　　1)主动关闭连接的一方 – 也就是主动调用socket的close操作的一方，最终会进入TIME_WAIT状态 ;<br>　　2)被动关闭连接的一方，有一个中间状态，即CLOSE_WAIT，因为协议层在等待上层的应用程序，主动调用close操作后才主动关闭这条连接 ;<br>　　3)TIME_WAIT会默认等待2MSL时间后，才最终进入CLOSED状态；<br>　　4)在一个连接没有进入CLOSED状态之前，这个连接是不能被重用的！</p><h1 id="TIME-WAIT有什么用？"><a href="#TIME-WAIT有什么用？" class="headerlink" title="TIME_WAIT有什么用？"></a>TIME_WAIT有什么用？</h1><p>　　socket其实就是一个五元组，包括：源IP, 源端口, 目的IP, 目的端口, 类型(TCP or UDP)。这个五元组，即标识了一条可用的连接。比如说，如果本地出口IP是110.122.144.166，那么你的浏览器在连接某一个Web服务器，例如百度的时候，这条socket连接的五元组可能就是：[110.122.144.166:45678, tcp, 110.88.92.104:80] ,<br>源IP为你的出口IP地址 110.122.144.166，源端口为随机端口 45678，目的IP为百度的某一个负载均衡服务器IP 110.88.92.104，端口为HTTP标准的80端口。如果这个时候，你再开一个浏览器，访问百度，将会产生一条新的连接：[110.122.144.166:43678, tcp, 110.88.92.104:80] , 这条新的连接的源端口为一个新的随机端口 43678。<br>　　如果来做个类比的话，TIME_WAIT的出现，对应的是你的程序里的异常处理，它的出现，就是为了解决网络的丢包和网络不稳定所带来的其他问题：<br>　　1)防止前一个连接【五元组，这里继续以 110.122.144.166:45678, tcp, 110.88.92.104:80 为例】上延迟的数据包或者丢失重传的数据包，被后面复用的连接【前一个连接关闭后，此时你再次访问百度，新的连接可能还是由110.122.144.166:45678, tcp, 110.88.92.104:80 这个五元组来表示，也就是源端口凑巧还是45678】错误的接收（异常：数据丢了，或者传输太慢了），参见下图：</p><img src="/2020/08/26/TIME_WAIT和CLOSE_WAIT/1_数据异常.jpg"><p>　　SEQ=3的数据包丢失，重传第一次，没有得到ACK确认；<br>　　如果没有TIME_WAIT，或者TIME_WAIT时间非常端，那么关闭的连接【110.122.144.166:45678, tcp, 110.88.92.104:80 的状态变为了CLOSED，源端口可被再次利用】，马上被重用【对110.88.92.104:80新建的连接，复用了之前的随机端口45678】，并连续发送SEQ=1,2 的数据包;<br>　　此时，前面的连接上的SEQ=3的数据包再次重传，同时，seq的序号刚好也是3（这个很重要，不然，SEQ的序号对不上，就会RST掉），此时，前面一个连接上的数据被后面的一个连接错误的接收;<br>　　2)确保连接方能在时间范围内，关闭自己的连接。其实，也是因为丢包造成的，参见下图：</p><img src="/2020/08/26/TIME_WAIT和CLOSE_WAIT/2_丢包异常.jpg"><p>　　主动关闭方关闭了连接，发送了FIN；<br>　　被动关闭方回复ACK同时也执行关闭动作，发送FIN包；此时，被动关闭的一方进入LAST_ACK状态;<br>　　主动关闭的一方回去了ACK，主动关闭一方进入TIME_WAIT状态；<br>　　但是最后的ACK丢失，被动关闭的一方还继续停留在LAST_ACK状态; 　　此时，如果没有TIME_WAIT的存在，或者说，停留在TIME_WAIT上的时间很短，则主动关闭的一方很快就进入了CLOSED状态，也即是说，如果此时新建一个连接，源随机端口如果被复用，在connect发送SYN包后，由于被动方仍认为这条连接【五元组】还在等待ACK，但是却收到了SYN，则被动方会回复RST;<br>　　造成主动创建连接的一方，由于收到了RST，则连接无法成功;<br>　　所以，这里看到了，TIME_WAIT的存在是很重要的，如果强制忽略TIME_WAIT，还是有很高的机率，造成数据混乱，或者短暂性的连接失败。那么，为什么说TIME_WAIT状态会是持续2MSL（2倍的max segment lifetime）呢？这个2MSL，是RFC 793里定义的，这个定义，更多的是一种保障（IP数据包里的TTL，即数据最多存活的跳数，真正反应的才是数据在网络上的存活时间），确保最后丢失了ACK，被动关闭的一方再次重发FIN并等待回复的ACK，一来一去两个来回。内核里，写死了这个MSL的时间为：30秒（RFC里建议的MSL其实是2分钟，但是很多实现都是30秒），所以TIME_WAIT的即为1分钟。</p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;h1 id=&quot;什么是TIME-WAIT和CLOSE-WAIT&quot;&gt;&lt;a href=&quot;#什么是TIME-WAIT和CLOSE-WAIT&quot; class=&quot;headerlink&quot; title=&quot;什么是TIME-WAIT和CLOSE-WAIT ?&quot;&gt;&lt;/a&gt;什么是TIME-WAIT和CL
+      
+    
+    </summary>
+    
+      <category term="技术积累" scheme="https://liuruijie87.github.io/categories/%E6%8A%80%E6%9C%AF%E7%A7%AF%E7%B4%AF/"/>
+    
+    
+      <category term="TCP" scheme="https://liuruijie87.github.io/tags/TCP/"/>
+    
+  </entry>
   
   <entry>
     <title>进程和线程的五种状态（生命周期）</title>
@@ -484,31 +509,6 @@
       
         &lt;h1 id=&quot;前记&quot;&gt;&lt;a href=&quot;#前记&quot; class=&quot;headerlink&quot; title=&quot;前记&quot;&gt;&lt;/a&gt;前记&lt;/h1&gt;&lt;p&gt;　　前篇总结复杂度分析，本篇学习数组。&lt;/p&gt;
 &lt;h1 id=&quot;数组&quot;&gt;&lt;a href=&quot;#数组&quot; class=&quot;headerlink&quot; t
-      
-    
-    </summary>
-    
-      <category term="算法学习" scheme="https://liuruijie87.github.io/categories/%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0/"/>
-    
-    
-      <category term="算法" scheme="https://liuruijie87.github.io/tags/%E7%AE%97%E6%B3%95/"/>
-    
-  </entry>
-  
-  <entry>
-    <title>数据结构与算法学习笔记（1）-复杂度分析</title>
-    <link href="https://liuruijie87.github.io/2020/01/13/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0%EF%BC%881%EF%BC%89-%E5%A4%8D%E6%9D%82%E5%BA%A6%E5%88%86%E6%9E%90/"/>
-    <id>https://liuruijie87.github.io/2020/01/13/数据结构与算法学习（1）-复杂度分析/</id>
-    <published>2020-01-13T13:16:58.814Z</published>
-    <updated>2020-01-14T13:27:59.741Z</updated>
-    
-    <content type="html"><![CDATA[<h1 id="前记"><a href="#前记" class="headerlink" title="前记"></a>前记</h1><p>　　众所周知，数据结构和算法是编程当中的内功，只有把内功修炼深厚，才能应对各种招式的变化。如果每天做一些机械性质的增删改查，那是注定在编程道路上走不远的，因此，从本篇开始，进行数据结构和算法的学习，并以笔记的形式进行知识点的总结。</p><h1 id="基本复杂度分析"><a href="#基本复杂度分析" class="headerlink" title="基本复杂度分析"></a>基本复杂度分析</h1><p>　　复杂度分析是算法学习的精髓，可以说掌握了复杂度分析，算法学习就成功了一半。而最常用的复杂度表示方法就是大O表示法，这是表示代码执行时间或所占空间随数据规模增长的变化趋势的一种方法。当n很大时，你可以把它想象成100000，而公式中的低阶、常量、系数三部分并不影响增长趋势，所以都可以忽略，我们只需保留一个最大量级就可以了。</p><h2 id="时间复杂度分析"><a href="#时间复杂度分析" class="headerlink" title="时间复杂度分析"></a>时间复杂度分析</h2><p>　　1 只关注循环执行次数最多的一段代码。<br>　　2 加法法则：总的时间复杂度等于量级最大的那段代码的时间复杂度。即抽象公式：T(n)=T1(n)+T2(n)=Max(O(f(n)),O(g(n)))。<br>　　3 乘法法则：嵌套代码的复杂度等于嵌套内外代码复杂度的乘积。<br>　　常见的复杂度有O(1)、O(logn)、O(n)、O(nlogn)、O(n^2)、O(2^n)、O(n!)，其中O(2^n)和O(n!)为非多项式量级。<br>　　O(logn)比较难以分析，借用以下例子加以理解：</p><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">i = 1;</span><br><span class="line">while(i &lt;= n)&#123;</span><br><span class="line">i = i * 2;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure><p>可以看出i从1开始，每次循环就乘以2，当大于n时，循环结束，因此可以看出这是一个等比数列：2^0,2^1,2^2,2^3……2^k = n，其中k代表执行的次数，即k=logn（以2为底，用大O表示的话可以省略底数）。<br>　　另外，还有一种非寻常的情况，即代码的复杂度由两个数据的规模来决定，如下：</p><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">int cal(int m, int n) &#123;</span><br><span class="line">int sum_1 = 0;</span><br><span class="line">int i = 1;</span><br><span class="line">for (; i &lt; m; ++i) &#123;</span><br><span class="line">sum_1 = sum_1 + i;</span><br><span class="line">&#125;</span><br><span class="line">int sum_2 = 0;</span><br><span class="line">int j = 1;</span><br><span class="line">for (; j &lt; n; ++j) &#123;</span><br><span class="line">sum_2 = sum_2 + j;</span><br><span class="line">&#125;</span><br><span class="line">return sum_1 + sum_2;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure><p>可以看出，m和n表示两个数据规模，我们无法事先评估,m和n谁的量级大，所以复杂度就是O(m+n)。</p><h2 id="空间复杂度分析"><a href="#空间复杂度分析" class="headerlink" title="空间复杂度分析"></a>空间复杂度分析</h2><p>　　空间复杂度一般比较简单，能够通过肉眼看出来，例如下面代码：</p><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">void print(int n) &#123;</span><br><span class="line">int i = 0;</span><br><span class="line">int[] a = new int[n];</span><br><span class="line">for (i; i &lt;n; ++i) &#123;</span><br><span class="line">a[i] = i * i;</span><br><span class="line">&#125;</span><br><span class="line">for (i = n-1; i &gt;= 0; --i) &#123;</span><br><span class="line">print out a[i]</span><br><span class="line">&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure><p>　　可以看到，申请了一个大小为n的int类型数组，除此之外，剩下的代码都没有占用更多的空间，所以整段代码的空间复杂度就是O(n)。</p><h1 id="最好、最坏时间复杂度"><a href="#最好、最坏时间复杂度" class="headerlink" title="最好、最坏时间复杂度"></a>最好、最坏时间复杂度</h1><p>　　顾名思义，最好情况时间复杂度就是，在最理想的情况下，执行这段代码的时间复杂度。同理，最坏情况时间复杂度就是，在最糟糕的情况下，执行这段代码的时间复杂度。看代码：</p><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">int find(int[] array, int n, int x) &#123;</span><br><span class="line">int i = 0;</span><br><span class="line">int pos = -1;</span><br><span class="line">for (; i &lt; n; ++i) &#123;</span><br><span class="line">if (array[i] == x) &#123;</span><br><span class="line">pos = i;</span><br><span class="line">break;</span><br><span class="line">&#125;</span><br><span class="line">&#125;</span><br><span class="line">return pos;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure><p>　　上述代码中，在一个数组中查找x，如果x是第一个数，则最快，而如果x不存在数组中，则要遍历n次，因此，最好复杂度O(1)，最坏复杂度O(n)。</p><h1 id="平均情况时间复杂度"><a href="#平均情况时间复杂度" class="headerlink" title="平均情况时间复杂度"></a>平均情况时间复杂度</h1><p>　　还是上述代码，为了方便你理解，我们假设在数组中与不在数组中的概率都为1/2。另外，要查找的数据出现在0～n-1这n个位置的概率也是一样的，为1/n。所以，根据概率乘法法则，要查找的数据出现在0～n-1中任意位置的概率就是1/(2n)。因此平均时间复杂度的计算过程为：1/2n+2/2n+……+n/2n+n/2=(3n+1)/4。这个值就是加权平均值，用大O法表示即：O(n)。</p><h1 id="均摊时间复杂度"><a href="#均摊时间复杂度" class="headerlink" title="均摊时间复杂度"></a>均摊时间复杂度</h1><p>　　首先看代码：</p><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">int[] array = new int[n];</span><br><span class="line">int count = 0;</span><br><span class="line">void insert(int val) &#123;</span><br><span class="line">if (count == array.length) &#123;</span><br><span class="line">int sum = 0;</span><br><span class="line">for (int i = 0; i &lt; array.length; ++i) &#123;</span><br><span class="line">sum = sum + array[i];</span><br><span class="line">&#125;</span><br><span class="line">array[0] = sum;</span><br><span class="line">count = 1;</span><br><span class="line">&#125;</span><br><span class="line">array[count] = val;</span><br><span class="line">++count;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure><p>　　这段代码实现了一个往数组中插入数据的功能。当数组满了之后，也就是代码中的 count == array.length 时，我们用for循环遍历数组求和，并清空数组，将求和之后的sum值放到数组的第一个位置，然后再将新的数据插入。但如果数组一开始就有空闲空间，则直接将数据插入数组。<br>　　最理想的情况下，数组中有空闲空间，我们只需要将数据插入到数组下标为count的位置就可以了，所以最好情况时间复杂度为O(1)。最坏的情况下，数组中没有空闲空间了，我们需要先做一次数组的遍历求和，然后再将数据插入，所以最坏情况时间复杂度为O(n)。<br>　　假设数组的长度是n，根据数据插入的位置的不同，我们可以分为n种情况，每种情况的时间复杂度是O(1)。除此之外，还有一种“额外”的情况，就是在数组没有空闲空间时插入一个数据，这个时候的时间复杂度是O(n)。而且，这n+1种情况发生的概率一样，都是1/(n+1)。所以，根据加权平均的计算方法，我们求得的平均时间复杂度就是：1/(n+1)+1/(n+1)+……+n/(n+1)=O(1)。<br>　　每一次O(n)的插入操作，都会跟着n-1次O(1)的插入操作，所以把耗时多的那次操作均摊到接下来的n-1次耗时少的操作上，均摊下来，这一组连续的操作的均摊时间复杂度就是O(1)。这就是均摊分析的大致思路。<br>　　对一个数据结构进行一组连续操作中，大部分情况下时间复杂度都很低，只有个别情况下时间复杂度比较高，而且这些操作之间存在前后连贯的时序关系（即有规律），这个时候，我们就可以将这一组操作放在一块儿分析，看是否能将较高时间复杂度那次操作的耗时，平摊到其他那些时间复杂度比较低的操作上。而且，在能够应用均摊时间复杂度分析的场合，一般均摊时间复杂度就等于最好情况时间复杂度。</p>]]></content>
-    
-    <summary type="html">
-    
-      
-      
-        &lt;h1 id=&quot;前记&quot;&gt;&lt;a href=&quot;#前记&quot; class=&quot;headerlink&quot; title=&quot;前记&quot;&gt;&lt;/a&gt;前记&lt;/h1&gt;&lt;p&gt;　　众所周知，数据结构和算法是编程当中的内功，只有把内功修炼深厚，才能应对各种招式的变化。如果每天做一些机械性质的增删改查，那是注定在编程道
       
     
     </summary>
